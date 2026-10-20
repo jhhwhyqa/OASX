@@ -93,7 +93,7 @@ class AutoStartService extends GetxService {
           _windowsTaskName,
           '/F',
         ]);
-        return _isWindowsEnabled();
+        return await _isWindowsEnabled();
       } finally {
         try {
           await xmlFile.delete();

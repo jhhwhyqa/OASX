@@ -27,8 +27,13 @@ void main() {
 
   test('switching from info to error preserves latest refresh intent', () {
     final controller = ScriptLogBrowserController(scriptName: 'demo');
+    addTearDown(controller.onClose);
 
-    controller.selectTab(ScriptLogBrowserTab.error);
+    // Exercise the state transition without activating the error page; the
+    // page activation starts background refresh and network work that is
+    // outside this unit test's scope.
+    controller.handleInfoViewHidden();
+    controller.activeTab.value = ScriptLogBrowserTab.error;
 
     expect(controller.shouldRefreshLatestOnInfoResume, isTrue);
   });

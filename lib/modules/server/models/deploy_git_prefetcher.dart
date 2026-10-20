@@ -31,7 +31,7 @@ class DeployGitPrefetcher {
       if (!configured) {
         return false;
       }
-      return _fetchBranch(config);
+      return await _fetchBranch(config);
     } catch (e) {
       log('ERROR: Failed to prepare git fetch: $e');
       return false;
