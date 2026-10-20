@@ -55,7 +55,7 @@ OASX 是面向 OAS 的 Flutter GUI 客户端，负责提供连接配置、本地
 
 - Windows
 - Android
-- Web ([点击前往OASX](https://azurtian.github.io/OASX))
+- Web 
 
 ## 快速开始
 
@@ -236,9 +236,7 @@ UI 文案应优先通过 `I18n` key + `.tr` 接入，不建议直接写死展示
 
 - OASX 是 OAS 的 GUI 客户端，不是 OAS 服务端本体
 - OASX 负责提供图形化交互、连接配置和本地部署入口
-- OAS 相关文档可参考：
-  - 主仓库：<https://github.com/AzurTian/OnmyojiAutoScript>
-  - 文档站点：<>
+
 
 ## 参与开发
 
