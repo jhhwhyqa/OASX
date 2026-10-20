@@ -382,10 +382,7 @@ class ArgsDraftBar extends StatelessWidget {
                         );
                         return;
                       }
-                      final firstErrorGroup = controller.firstErrorGroup;
-                      if (firstErrorGroup != null) {
-                        controller.selectGroup(firstErrorGroup);
-                      }
+                      controller.jumpToFirstErrorGroup();
                       Get.snackbar(
                         I18n.error.tr,
                         I18n.argsValidationFailed.tr,

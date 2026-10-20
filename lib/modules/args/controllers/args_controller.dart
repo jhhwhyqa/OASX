@@ -72,6 +72,13 @@ class ArgsController extends GetxController {
     return null;
   }
 
+  void jumpToFirstErrorGroup() {
+    final group = firstErrorGroup;
+    if (group != null) {
+      selectGroup(group);
+    }
+  }
+
   Future<void> loadGroups({
     String config = '',
     String task = '',
