@@ -28,6 +28,7 @@ extension ScriptServiceConfigX on ScriptService {
     if (!ret) {
       return false;
     }
+    _replaceScriptOrderName(oldName, newName);
     await _disposeConfigRuntime(oldName);
     await refreshScriptsFromServer();
     await _connectKnownConfig(newName);
@@ -43,6 +44,21 @@ extension ScriptServiceConfigX on ScriptService {
     await _disposeConfigRuntime(name);
     await refreshScriptsFromServer();
     return true;
+  }
+
+  /// Keeps the renamed config at its current position in the local order.
+  void _replaceScriptOrderName(String oldName, String newName) {
+    final normalizedOld = oldName.trim();
+    final normalizedNew = newName.trim();
+    if (normalizedOld.isEmpty || normalizedNew.isEmpty) {
+      return;
+    }
+    final index = scriptOrderList.indexOf(normalizedOld);
+    if (index < 0 || scriptOrderList.contains(normalizedNew)) {
+      return;
+    }
+    scriptOrderList[index] = normalizedNew;
+    _persistScriptOrder();
   }
 
   /// Connects one config only when it is present in the synced config list.

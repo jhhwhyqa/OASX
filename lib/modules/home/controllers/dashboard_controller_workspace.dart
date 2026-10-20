@@ -126,6 +126,29 @@ extension HomeDashboardWorkspaceX on HomeDashboardController {
     return orderedScripts.where(_matchesVisibleFilter).toList();
   }
 
+  /// Moves one visible config and persists the resulting full order.
+  void reorderVisibleScripts(int oldIndex, int newIndex) {
+    final names = visibleScripts.map((model) => model.name).toList();
+    if (oldIndex < 0 || oldIndex >= names.length) {
+      return;
+    }
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    if (newIndex < 0) {
+      newIndex = 0;
+    }
+    if (newIndex >= names.length) {
+      newIndex = names.length - 1;
+    }
+    if (newIndex == oldIndex) {
+      return;
+    }
+    final moved = names.removeAt(oldIndex);
+    names.insert(newIndex, moved);
+    _scriptService.applyVisibleScriptOrder(names);
+  }
+
   ScriptModel? get activeScriptModel {
     return _scriptService.findScriptModel(activeScriptName.value.trim());
   }

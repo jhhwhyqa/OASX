@@ -15,13 +15,13 @@ import 'package:oasx/utils/platform_utils.dart';
 import 'package:oasx/utils/time_utils.dart';
 import 'package:oasx/modules/log/script_log_controller.dart';
 import 'package:oasx/modules/log/script_log_browser_controller.dart';
+import 'package:oasx/service/script_order.dart';
 
 part 'script_service_ws.dart';
 part 'script_service_auto.dart';
 part 'script_service_config.dart';
 
 class ScriptService extends GetxService {
-  // ignore: unused_field
   final _storage = GetStorage();
   final wsService = Get.find<WebSocketService>();
   final scriptModelMap = <String, ScriptModel>{}.obs;
@@ -35,6 +35,7 @@ class ScriptService extends GetxService {
   @override
   Future<void> onInit() async {
     _loadAutoScriptListFromStorage();
+    _loadScriptOrderFromStorage();
     await reloadFromServer();
     super.onInit();
   }
@@ -63,6 +64,7 @@ class ScriptService extends GetxService {
     scriptModelMap[sm.name] = sm;
     if (!scriptOrderList.contains(sm.name)) {
       scriptOrderList.add(sm.name);
+      _persistScriptOrder();
     }
   }
 
@@ -85,6 +87,7 @@ class ScriptService extends GetxService {
     wsService.close(name);
     autoScriptList.removeWhere((e) => e == name);
     scriptOrderList.removeWhere((e) => e == name);
+    _persistScriptOrder();
   }
 
   void syncScriptOrder(Iterable<String> scripts) {
@@ -92,19 +95,75 @@ class ScriptService extends GetxService {
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toList();
-    scriptOrderList.value = normalized;
-    for (final name in normalized) {
+    final preferred = scriptOrderList.isNotEmpty
+        ? scriptOrderList
+        : _readStoredScriptOrder();
+    final merged = mergeScriptOrder(
+      preferredOrder: preferred,
+      availableNames: normalized,
+    );
+    scriptOrderList.value = merged;
+    if (normalized.isNotEmpty) {
+      _persistScriptOrder();
+    }
+    for (final name in merged) {
       if (!scriptModelMap.containsKey(name)) {
         addScriptModel(name);
       }
     }
-    final validSet = normalized.toSet();
+    final validSet = merged.toSet();
     final stale = scriptModelMap.keys
         .where((e) => !validSet.contains(e))
         .toList();
     for (final name in stale) {
       deleteScriptModel(name);
     }
+  }
+
+  /// Moves the visible config subset while preserving hidden config slots.
+  void applyVisibleScriptOrder(List<String> visibleOrder) {
+    scriptOrderList.value = applyVisibleOrderToFullOrder(
+      fullOrder: scriptOrderList.toList(),
+      visibleOrder: visibleOrder,
+    );
+    _persistScriptOrder();
+  }
+
+  /// Loads the persisted config order from local storage.
+  void _loadScriptOrderFromStorage() {
+    scriptOrderList.value = _readStoredScriptOrder();
+  }
+
+  /// Reads the persisted config order without mutating the live list.
+  List<String> _readStoredScriptOrder() {
+    final raw = _storage.read(StorageKey.scriptOrder.name);
+    Iterable<dynamic>? values;
+    if (raw is List) {
+      values = raw;
+    } else if (raw is String && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          values = decoded;
+        }
+      } catch (_) {}
+    }
+    if (values == null) {
+      return <String>[];
+    }
+    final seen = <String>{};
+    return values
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty && seen.add(e))
+        .toList();
+  }
+
+  /// Persists the current config order to local storage.
+  void _persistScriptOrder() {
+    _storage.write(
+      StorageKey.scriptOrder.name,
+      jsonEncode(scriptOrderList.toList()),
+    );
   }
 
   ScriptModel? findScriptModel(String name) {

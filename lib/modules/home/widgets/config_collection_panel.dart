@@ -104,15 +104,27 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
             onLeave: (_) => _stopAutoScroll(),
             builder: (context, _, __) => SizedBox.expand(
               key: _listViewportKey,
-              child: ListView.separated(
-                controller: _listScrollController,
+              child: ReorderableListView.builder(
+                scrollController: _listScrollController,
+                buildDefaultDragHandles: false,
                 itemCount: scripts.length,
-                separatorBuilder: (_, __) => Divider(
-                  height: 1,
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-                itemBuilder: (context, index) =>
-                    _buildDropTargetTile(context, scripts[index]),
+                // ignore: deprecated_member_use
+                onReorder: widget.controller.reorderVisibleScripts,
+                itemBuilder: (context, index) {
+                  final script = scripts[index];
+                  return Column(
+                    key: ValueKey<String>('config-item-${script.name}'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildDropTargetTile(context, script, index),
+                      if (index < scripts.length - 1)
+                        Divider(
+                          height: 1,
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           );
@@ -143,7 +155,11 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
   }
 
   /// Wraps one config tile in the drop target used by drag-copy flows.
-  Widget _buildDropTargetTile(BuildContext context, ScriptModel script) {
+  Widget _buildDropTargetTile(
+    BuildContext context,
+    ScriptModel script,
+    int index,
+  ) {
     return DragTarget<ConfigDragPayload>(
       onWillAcceptWithDetails: (details) {
         return _canAcceptPayload(script.name, details.data);
@@ -180,6 +196,13 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
           child: ConfigCollectionTile(
             controller: widget.controller,
             script: script,
+            dragHandle: Tooltip(
+              message: I18n.homeScriptReorder.tr,
+              child: ReorderableDragStartListener(
+                index: index,
+                child: const Icon(Icons.drag_indicator_rounded, size: 20),
+              ),
+            ),
             onTap: () => widget.onActivateScript(script.name),
             onTogglePower: () => widget.onTogglePower(
               script.name,

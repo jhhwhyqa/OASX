@@ -164,7 +164,8 @@ class I18n {
       homeLoadingConfigDetail = 'home_loading_config_detail';
   static const String homeScriptAbnormal = 'home_script_abnormal',
       homeScriptOffline = 'home_script_offline',
-      homeScriptSearchHint = 'home_script_search_hint';
+      homeScriptSearchHint = 'home_script_search_hint',
+      homeScriptReorder = 'home_script_reorder';
   static const String homeSortByStatus = 'home_sort_by_status',
       homeSortByName = 'home_sort_by_name',
       homeNoScriptSelected = 'home_no_script_selected',

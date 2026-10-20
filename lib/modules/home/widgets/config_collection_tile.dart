@@ -16,6 +16,7 @@ class ConfigCollectionTile extends StatelessWidget {
     required this.onRename,
     required this.onExport,
     required this.onDelete,
+    this.dragHandle,
   });
 
   static const _actionSpacing = 8.0;
@@ -27,6 +28,9 @@ class ConfigCollectionTile extends StatelessWidget {
   final VoidCallback onRename;
   final VoidCallback onExport;
   final VoidCallback onDelete;
+
+  /// Optional reorder handle rendered before the config content.
+  final Widget? dragHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +46,8 @@ class ConfigCollectionTile extends StatelessWidget {
           );
           final compactThreshold =
               ConfigCollectionTile._compactLayoutThreshold +
-              (showLinkCheckbox ? 64 : 0);
+              (showLinkCheckbox ? 64 : 0) +
+              (dragHandle != null ? 28 : 0);
           final isCompact = constraints.maxWidth < compactThreshold;
           final rowColor = isActive
               ? theme.colorScheme.primaryContainer.withValues(alpha: 0.24)
@@ -63,6 +68,12 @@ class ConfigCollectionTile extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    if (dragHandle != null)
+                      SizedBox(
+                        width: 28,
+                        height: 36,
+                        child: Center(child: dragHandle),
+                      ),
                     if (showLinkCheckbox) ...[
                       SizedBox(
                         width: 36,

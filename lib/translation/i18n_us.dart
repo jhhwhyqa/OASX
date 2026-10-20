@@ -137,6 +137,7 @@ final Map<String, String> _us_ui = {
   I18n.homeScriptAbnormal: 'Abnormal',
   I18n.homeScriptOffline: 'Offline',
   I18n.homeScriptSearchHint: 'Search configs',
+  I18n.homeScriptReorder: 'Drag to reorder',
   I18n.homeSortByStatus: 'Sort by status',
   I18n.homeSortByName: 'Sort by name',
   I18n.homeNoScriptSelected: 'Select a config first',

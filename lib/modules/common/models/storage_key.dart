@@ -20,4 +20,5 @@ enum StorageKey {
   homeWorkbenchCollectionWidth,
   homeWorkbenchSplitRatio,
   autoDeploy,
+  scriptOrder,
 }
