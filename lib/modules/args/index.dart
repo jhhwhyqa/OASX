@@ -53,6 +53,7 @@ class Args extends StatelessWidget {
     this.scriptName,
     this.taskName,
     this.groupDraggable = true,
+    this.groupPager = false,
     this.stagingMode = false,
     this.lockImmediateScheduling = false,
     this.activeDragPayload,
@@ -66,6 +67,7 @@ class Args extends StatelessWidget {
   final String? scriptName;
   final String? taskName;
   final bool groupDraggable;
+  final bool groupPager;
   final bool stagingMode;
   final bool lockImmediateScheduling;
   final ConfigDragPayload? activeDragPayload;
@@ -82,8 +84,35 @@ class Args extends StatelessWidget {
           (scriptName ?? Get.parameters['script'] ?? '').trim();
       final selectedTask = (taskName ?? Get.parameters['task'] ?? '').trim();
       final groupNames = controller.groupsName.value;
+      final selectedGroup = groupPager ? controller.selectedGroup.value : '';
+      final selectedGroupExists = groupPager &&
+          controller.groupsData.value.containsKey(selectedGroup);
+      final errorGroups = groupPager
+          ? controller.fieldErrors.keys
+              .map((key) => key.split('::').first)
+              .toSet()
+          : const <String>{};
+      final dirtyGroups = groupPager
+          ? controller.dirtyFieldKeys
+              .map((key) => key.split('::').first)
+              .toSet()
+          : const <String>{};
       final content = LayoutBuilder(
         builder: (context, constraints) {
+          if (groupPager) {
+            return _buildGroupPager(
+              context,
+              controller: controller,
+              constraints: constraints,
+              groupNames: groupNames,
+              selected: selectedGroup,
+              selectedGroupExists: selectedGroupExists,
+              errorGroups: errorGroups,
+              dirtyGroups: dirtyGroups,
+              selectedScript: selectedScript,
+              selectedTask: selectedTask,
+            );
+          }
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             child: ConstrainedBox(
@@ -147,6 +176,87 @@ class Args extends StatelessWidget {
         ],
       );
     });
+  }
+
+  Widget _buildGroupPager(
+    BuildContext context, {
+    required ArgsController controller,
+    required BoxConstraints constraints,
+    required List<String> groupNames,
+    required String selected,
+    required bool selectedGroupExists,
+    required Set<String> errorGroups,
+    required Set<String> dirtyGroups,
+    required String selectedScript,
+    required String selectedTask,
+  }) {
+    if (selected.isEmpty || !selectedGroupExists) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+          child: Row(
+            children: groupNames.map((name) {
+              final hasError = errorGroups.contains(name);
+              final hasDirty = dirtyGroups.contains(name);
+              final suffix = hasError ? ' ⚠' : (hasDirty ? ' ●' : '');
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text('${name.tr}$suffix'),
+                  showCheckmark: false,
+                  selected: name == selected,
+                  onSelected: (_) => controller.selectGroup(name),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            key: PageStorageKey<String>(
+              'args-group-$selectedScript-$selectedTask-$selected',
+            ),
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      if (groupDraggable)
+                        _buildGroupDragHandle(
+                          context,
+                          selectedScript,
+                          selectedTask,
+                          selected,
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          selected.tr,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                  ..._children(
+                    groupName: selected,
+                    selectedScript: selectedScript,
+                    selectedTask: selectedTask,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   List<Widget> _children({
@@ -271,6 +381,10 @@ class ArgsDraftBar extends StatelessWidget {
                           contextText,
                         );
                         return;
+                      }
+                      final firstErrorGroup = controller.firstErrorGroup;
+                      if (firstErrorGroup != null) {
+                        controller.selectGroup(firstErrorGroup);
                       }
                       Get.snackbar(
                         I18n.error.tr,

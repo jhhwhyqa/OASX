@@ -101,6 +101,7 @@ class _TaskParameterPanelState extends State<TaskParameterPanel> {
                   scriptName: _scriptName,
                   taskName: _taskName,
                   groupDraggable: canDragGroups,
+                  groupPager: true,
                   stagingMode: true,
                   activeDragPayload: dragPayload,
                   groupDragPayloadBuilder: canDragGroups

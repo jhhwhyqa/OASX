@@ -9,6 +9,7 @@ final Map<String, String> _us_base_map = {
   ..._us_invite_config,
   ..._us_general_battle_config,
   ..._us_switch_soul,
+  ..._us_general_climb_config,
 };
 
 final Map<String, String> _us_ui = {
@@ -390,4 +391,16 @@ Please use a comma from the English input method.
 Preset groups support [1-7], and preset teams support [1-4]''',
   'enable_switch_by_name_help':
       'This is another way to switch souls. Compared to the method above, it supports more presets, but similarly, you still need to ensure that the preset team is in a locked state',
+};
+
+final Map<String, String> _us_general_climb_config = {
+  'general_climb': 'General Climb',
+  'general_config': 'General Settings',
+  'switch_soul_config': 'Soul Switch',
+  'pass_battle_conf': 'Ticket Battles',
+  'ap_battle_conf': 'AP Battles',
+  'ap100_battle_conf': '100 AP Battles',
+  'boss_battle_conf': 'Boss Battles',
+  'rich_man': 'Rich Man',
+  'scheduler': 'Scheduler',
 };

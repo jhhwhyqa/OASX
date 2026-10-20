@@ -4,6 +4,7 @@ class ArgsController extends GetxController {
   final groups = Rx<List<GroupsModel>>([]);
   final groupsName = Rx<List<String>>([]);
   final groupsData = Rx<Map<String, GroupsModel>>({});
+  final selectedGroup = ''.obs;
   final dirtyFieldKeys = <String>{}.obs;
   final fieldErrors = <String, String>{}.obs;
   final isDraftMode = false.obs;
@@ -38,6 +39,39 @@ class ArgsController extends GetxController {
     loadModel(jsonDecode(json));
   }
 
+  void selectGroup(String name) {
+    if (!groupsName.value.contains(name)) return;
+    selectedGroup.value = name;
+  }
+
+  void _syncSelectedGroup() {
+    final names = groupsName.value;
+    if (names.isEmpty) {
+      selectedGroup.value = '';
+      return;
+    }
+    if (names.contains(selectedGroup.value)) return;
+    // 优先落在主配置分组，其次第一个
+    selectedGroup.value = names.firstWhere(
+      (n) => n == 'general_climb' || n == 'general_config',
+      orElse: () => names.first,
+    );
+  }
+
+  bool groupHasError(String group) =>
+      fieldErrors.keys.any((k) => k.startsWith('$group::'));
+
+  bool groupHasDirty(String group) =>
+      dirtyFieldKeys.any((k) => k.startsWith('$group::'));
+
+  String? get firstErrorGroup {
+    for (final key in fieldErrors.keys) {
+      final group = key.split('::').first;
+      if (group.isNotEmpty) return group;
+    }
+    return null;
+  }
+
   Future<void> loadGroups({
     String config = '',
     String task = '',
@@ -68,6 +102,7 @@ class ArgsController extends GetxController {
     }
     groupsData.value = groupsMap;
     groupsName.value = names;
+    _syncSelectedGroup();
     _snapshotOriginalValues();
     if (!stagingMode || _scopeScripts.length <= 1) {
       return;

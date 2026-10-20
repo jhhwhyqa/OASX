@@ -3,6 +3,13 @@ part of i18n;
 
 final Map<String, String> _cn_general_climb_config = {
   'general_climb': '通用爬塔',
+  'general_config': '通用设置',
+  'switch_soul_config': '御魂切换',
+  'pass_battle_conf': '门票战斗',
+  'ap_battle_conf': '体力战斗',
+  'ap100_battle_conf': '百体战斗',
+  'boss_battle_conf': '首领战斗',
+  'rich_man': '大富翁',
   'ap_game_max': '活动每日使用体力挑战的最大次数',
   'ap_game_max_help': '保持默认300即可',
   'ap_mode': '挂体力模式',
