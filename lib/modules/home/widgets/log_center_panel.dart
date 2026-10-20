@@ -16,6 +16,22 @@ part 'log_center_log_text_span_builder.dart';
 part 'log_center_toolbar.dart';
 part 'log_center_panel_scroll.dart';
 
+/// Enables direct drag selection and the native copy menu for log text on
+/// desktop platforms.
+///
+/// Mobile keeps the existing long-press copy dialog, which already provides a
+/// selectable surface and avoids competing with the selection gesture.
+Widget _wrapLogSelection(BuildContext context, Widget child) {
+  final platform = Theme.of(context).platform;
+  final supportsDesktopSelection = platform == TargetPlatform.windows ||
+      platform == TargetPlatform.linux ||
+      platform == TargetPlatform.macOS;
+  if (!supportsDesktopSelection) {
+    return child;
+  }
+  return SelectionArea(child: child);
+}
+
 /// Script log center backed by the `/logs` browser API.
 class LogCenterPanel extends StatefulWidget {
   /// Creates one script log center.

@@ -88,7 +88,7 @@ class LogCenterInfoView extends StatelessWidget {
   }
 
   Widget _buildVerticalList(BuildContext context, {required bool wrapLines}) {
-    return GestureDetector(
+    final list = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onLongPress: () => _openCopyDialog(context),
       child: NotificationListener<ScrollNotification>(
@@ -109,6 +109,7 @@ class LogCenterInfoView extends StatelessWidget {
         ),
       ),
     );
+    return _wrapLogSelection(context, list);
   }
 
   double _resolveContentWidth(BuildContext context, double viewportWidth) {

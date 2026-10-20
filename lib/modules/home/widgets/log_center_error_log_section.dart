@@ -44,22 +44,25 @@ extension _LogCenterErrorDetailLogSectionX on LogCenterErrorDetailView {
   /// Builds the wrapped vertical log sliver.
   Widget _buildWrappedLogSliver(BuildContext context, List<String> lines) {
     return SliverToBoxAdapter(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onLongPress: () => _openCopyDialog(context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: lines.map((line) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: LogCenterLogText(
-                line: line,
-                maxLines: null,
-                overflow: TextOverflow.clip,
-                softWrap: true,
-              ),
-            );
-          }).toList(),
+      child: _wrapLogSelection(
+        context,
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onLongPress: () => _openCopyDialog(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: lines.map((line) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: LogCenterLogText(
+                  line: line,
+                  maxLines: null,
+                  overflow: TextOverflow.clip,
+                  softWrap: true,
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -71,24 +74,27 @@ extension _LogCenterErrorDetailLogSectionX on LogCenterErrorDetailView {
     List<String> lines,
     double width,
   ) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onLongPress: () => _openCopyDialog(context),
-      child: SizedBox(
-        width: width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: lines.map((line) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: LogCenterLogText(
-                line: line,
-                maxLines: 1,
-                overflow: TextOverflow.visible,
-                softWrap: false,
-              ),
-            );
-          }).toList(),
+    return _wrapLogSelection(
+      context,
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: () => _openCopyDialog(context),
+        child: SizedBox(
+          width: width,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: lines.map((line) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: LogCenterLogText(
+                  line: line,
+                  maxLines: 1,
+                  overflow: TextOverflow.visible,
+                  softWrap: false,
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );

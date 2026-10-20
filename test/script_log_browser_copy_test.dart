@@ -27,9 +27,14 @@ void main() {
     Get.reset();
   });
 
-  Future<void> pumpShell(WidgetTester tester, Widget child) async {
+  Future<void> pumpShell(
+    WidgetTester tester,
+    Widget child, {
+    ThemeData? theme,
+  }) async {
     await tester.pumpWidget(
       GetMaterialApp(
+        theme: theme,
         home: Scaffold(body: child),
         translations: _TestTranslations(),
         locale: const Locale('zh', 'CN'),
@@ -140,6 +145,46 @@ void main() {
     expect(find.byType(SelectableText), findsOneWidget);
     expect(find.text('alpha\nbeta'), findsOneWidget);
     expect(find.text('复制'), findsWidgets);
+  });
+
+  testWidgets('desktop info logs enable direct text selection', (tester) async {
+    final controller = Get.put(
+      ScriptLogBrowserController(scriptName: 'demo'),
+      tag: 'demo',
+      permanent: true,
+    );
+    controller.lines.addAll(const [
+      ScriptLogLine(
+        fileName: 'demo.log',
+        lineNo: 1,
+        offset: 0,
+        byteLength: 5,
+        text: 'alpha',
+        lineTruncated: false,
+      ),
+      ScriptLogLine(
+        fileName: 'demo.log',
+        lineNo: 2,
+        offset: 5,
+        byteLength: 4,
+        text: 'beta',
+        lineTruncated: false,
+      ),
+    ]);
+    controller.streamClient = ApiSseClient(
+      url: Uri.parse('http://127.0.0.1'),
+      onEvent: (_) {},
+      onStateChanged: (_, __) {},
+    );
+
+    await pumpShell(
+      tester,
+      const LogCenterPanel(scriptName: 'demo'),
+      theme: ThemeData(platform: TargetPlatform.windows),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SelectionArea), findsOneWidget);
   });
 }
 
