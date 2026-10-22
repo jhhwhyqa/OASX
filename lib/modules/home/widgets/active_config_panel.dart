@@ -3,11 +3,14 @@ import 'package:get/get.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
 import 'package:oasx/modules/home/models/home_workbench_layout.dart';
-import 'package:oasx/modules/home/widgets/config_state_indicator.dart';
+import 'package:oasx/modules/home/widgets/bulk_quick_schedule_button.dart';
+import 'package:oasx/modules/home/widgets/home_pane_card.dart';
 import 'package:oasx/modules/home/widgets/log_center_panel.dart';
+import 'package:oasx/modules/home/widgets/script_state_presentation.dart';
 import 'package:oasx/modules/home/widgets/statistics_panel.dart';
 import 'package:oasx/modules/home/widgets/task_catalog_panel.dart';
 import 'package:oasx/modules/home/widgets/task_status_panel.dart';
+import 'package:oasx/modules/home/widgets/workbench_tab_chip.dart';
 import 'package:oasx/translation/i18n_content.dart';
 
 class ActiveConfigPanel extends StatelessWidget {
@@ -50,100 +53,187 @@ class ActiveConfigPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Obx(() {
-          final script = controller.activeScriptModel;
-          final currentTab = controller.displayedWorkbenchTabFor(layoutMode);
-          final tabs = controller.workbenchTabsFor(layoutMode);
-          if (script == null) {
-            return Center(child: Text(I18n.homeNoScriptSelected.tr));
-          }
-          final isRunning = script.state.value == ScriptState.running;
-          final bulkMode = controller.bulkQuickScheduleMode.value;
-          final hasBulkTasks = controller
-              .quickSchedulableTaskNamesFor(script)
-              .isNotEmpty;
-          final isBulkIdle = bulkMode == HomeBulkQuickScheduleMode.none;
-          return Column(
+    return HomePaneCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Obx(() {
+        final script = controller.activeScriptModel;
+        final currentTab = controller.displayedWorkbenchTabFor(layoutMode);
+        final tabs = controller.workbenchTabsFor(layoutMode);
+        if (script == null) {
+          return _buildNoSelection(context);
+        }
+        final isRunning = script.state.value == ScriptState.running;
+        final bulkMode = controller.bulkQuickScheduleMode.value;
+        final hasBulkTasks = controller
+            .quickSchedulableTaskNamesFor(script)
+            .isNotEmpty;
+        final isBulkIdle = bulkMode == HomeBulkQuickScheduleMode.none;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(
+              context,
+              script: script,
+              isRunning: isRunning,
+              bulkMode: bulkMode,
+              hasBulkTasks: hasBulkTasks,
+              isBulkIdle: isBulkIdle,
+            ),
+            const SizedBox(height: 10),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: tabs
+                  .map(
+                    (tab) => WorkbenchTabChip(
+                      label: _tabLabel(tab),
+                      selected: currentTab == tab,
+                      onSelected: () => onChangeTab(tab),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 12),
+            Expanded(child: _buildTabContent(script, currentTab)),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _buildHeader(
+    BuildContext context, {
+    required ScriptModel script,
+    required bool isRunning,
+    required HomeBulkQuickScheduleMode bulkMode,
+    required bool hasBulkTasks,
+    required bool isBulkIdle,
+  }) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final state = controller.scriptStateFor(script);
+    final stateColor = state.color(context);
+    return Row(
+      children: [
+        if (onBackToScripts != null) ...[
+          IconButton(
+            tooltip: I18n.scriptList.tr,
+            onPressed: onBackToScripts,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            padding: EdgeInsets.zero,
+            style: IconButton.styleFrom(
+              foregroundColor: scheme.onSurfaceVariant,
+            ),
+            icon: const Icon(Icons.arrow_back_rounded, size: 20),
+          ),
+          const SizedBox(width: 2),
+        ],
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  if (onBackToScripts != null)
-                    IconButton(
-                      tooltip: I18n.scriptList.tr,
-                      onPressed: onBackToScripts,
-                      icon: const Icon(Icons.arrow_back_rounded),
-                    ),
-                  Expanded(
-                    child: Text(
-                      script.name,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
-                  _BulkQuickScheduleButton(
-                    icon: Icons.flash_on_rounded,
-                    tooltip: I18n.homeQuickRunAll.tr,
-                    loading: bulkMode == HomeBulkQuickScheduleMode.runNow,
-                    onPressed: isBulkIdle && hasBulkTasks
-                        ? onBulkQuickRun
-                        : null,
-                  ),
-                  _BulkQuickScheduleButton(
-                    icon: Icons.schedule_rounded,
-                    tooltip: I18n.homeQuickWaitAll.tr,
-                    loading: bulkMode == HomeBulkQuickScheduleMode.waitNow,
-                    onPressed: isBulkIdle && hasBulkTasks
-                        ? onBulkQuickWait
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  ConfigStateIndicator(
-                    state: controller.scriptStateFor(script),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: isRunning ? I18n.stop.tr : I18n.run.tr,
-                    onPressed: () => onTogglePower(script.name, !isRunning),
-                    icon: const Icon(Icons.power_settings_new_rounded),
-                  ),
-                  if (onExpandRightSidebar != null) const SizedBox(width: 8),
-                  if (onExpandRightSidebar != null)
-                    IconButton.filledTonal(
-                      key: const ValueKey<String>(
-                        'home-workbench-expand-right-sidebar',
-                      ),
-                      tooltip: I18n.homeRestoreSidebar.tr,
-                      onPressed: onExpandRightSidebar,
-                      icon: const Icon(
-                        Icons.keyboard_double_arrow_left_rounded,
-                      ),
-                    ),
-                ],
+              Text(
+                script.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: tabs
-                    .map(
-                      (tab) => ChoiceChip(
-                        label: Text(_tabLabel(tab)),
-                        showCheckmark: false,
-                        selected: currentTab == tab,
-                        onSelected: (_) => onChangeTab(tab),
-                      ),
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 12),
-              Expanded(child: _buildTabContent(script, currentTab)),
+              const SizedBox(height: 3),
+              ScriptStateBadge(state: state),
             ],
-          );
-        }),
+          ),
+        ),
+        const SizedBox(width: 8),
+        BulkQuickScheduleButton(
+          icon: Icons.flash_on_rounded,
+          tooltip: I18n.homeQuickRunAll.tr,
+          loading: bulkMode == HomeBulkQuickScheduleMode.runNow,
+          onPressed: isBulkIdle && hasBulkTasks ? onBulkQuickRun : null,
+        ),
+        BulkQuickScheduleButton(
+          icon: Icons.schedule_rounded,
+          tooltip: I18n.homeQuickWaitAll.tr,
+          loading: bulkMode == HomeBulkQuickScheduleMode.waitNow,
+          onPressed: isBulkIdle && hasBulkTasks ? onBulkQuickWait : null,
+        ),
+        const SizedBox(width: 2),
+        IconButton(
+          tooltip: isRunning ? I18n.stop.tr : I18n.run.tr,
+          onPressed: () => onTogglePower(script.name, !isRunning),
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints.tightFor(width: 38, height: 38),
+          padding: EdgeInsets.zero,
+          style: IconButton.styleFrom(
+            foregroundColor: isRunning ? stateColor : scheme.onSurfaceVariant,
+            backgroundColor: isRunning
+                ? stateColor.withValues(alpha: 0.10)
+                : null,
+          ),
+          icon: const Icon(Icons.power_settings_new_rounded, size: 21),
+        ),
+        if (onExpandRightSidebar != null) ...[
+          const SizedBox(width: 2),
+          IconButton.filledTonal(
+            key: const ValueKey<String>('home-workbench-expand-right-sidebar'),
+            tooltip: I18n.homeRestoreSidebar.tr,
+            onPressed: onExpandRightSidebar,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 38, height: 38),
+            padding: EdgeInsets.zero,
+            icon: const Icon(
+              Icons.keyboard_double_arrow_left_rounded,
+              size: 20,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildNoSelection(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+              shape: BoxShape.circle,
+            ),
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(
+                Icons.dashboard_customize_outlined,
+                size: 24,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            I18n.homeNoScriptSelected.tr,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -181,37 +271,5 @@ class ActiveConfigPanel extends StatelessWidget {
       HomeWorkbenchTab.stats => I18n.homeStatsTab.tr,
       HomeWorkbenchTab.logs => I18n.log.tr,
     };
-  }
-}
-
-class _BulkQuickScheduleButton extends StatelessWidget {
-  const _BulkQuickScheduleButton({
-    required this.icon,
-    required this.tooltip,
-    required this.loading,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final bool loading;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: loading ? null : onPressed,
-      icon: loading
-          ? SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            )
-          : Icon(icon),
-    );
   }
 }

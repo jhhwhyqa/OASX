@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oasx/config/theme.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
 import 'package:oasx/translation/i18n_content.dart';
 
@@ -15,6 +16,8 @@ class ConfigCollectionTaskPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mutedColor = theme.colorScheme.onSurfaceVariant;
     return Obx(() {
       final preview = _firstTaskPreview(script);
       if (preview == null) {
@@ -23,7 +26,7 @@ class ConfigCollectionTaskPreview extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           softWrap: false,
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
         );
       }
       return Row(
@@ -31,7 +34,7 @@ class ConfigCollectionTaskPreview extends StatelessWidget {
           Icon(
             preview.icon,
             size: 14,
-            color: preview.color,
+            color: _previewColor(context, preview.type),
           ),
           const SizedBox(width: 4),
           Expanded(
@@ -40,12 +43,21 @@ class ConfigCollectionTaskPreview extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               softWrap: false,
-              style: Theme.of(context).textTheme.labelMedium,
+              style: theme.textTheme.labelMedium?.copyWith(color: mutedColor),
             ),
           ),
         ],
       );
     });
+  }
+
+  Color _previewColor(BuildContext context, _PreviewTaskType type) {
+    final colors = OasxStateColors.of(context);
+    return switch (type) {
+      _PreviewTaskType.running => colors.running,
+      _PreviewTaskType.pending => colors.pending,
+      _PreviewTaskType.waiting => colors.waiting,
+    };
   }
 
   _TaskPreviewData? _firstTaskPreview(ScriptModel model) {
@@ -62,10 +74,7 @@ class ConfigCollectionTaskPreview extends StatelessWidget {
       if (taskName.isEmpty) {
         continue;
       }
-      return _TaskPreviewData(
-        type: _PreviewTaskType.pending,
-        name: taskName,
-      );
+      return _TaskPreviewData(type: _PreviewTaskType.pending, name: taskName);
     }
     for (final task in model.waitingTaskList) {
       final taskName = task.taskName.value.trim();
@@ -82,11 +91,7 @@ class ConfigCollectionTaskPreview extends StatelessWidget {
   }
 }
 
-enum _PreviewTaskType {
-  running,
-  pending,
-  waiting,
-}
+enum _PreviewTaskType { running, pending, waiting }
 
 class _TaskPreviewData {
   const _TaskPreviewData({
@@ -121,14 +126,6 @@ class _TaskPreviewData {
       _PreviewTaskType.running => Icons.bolt_rounded,
       _PreviewTaskType.pending => Icons.layers_rounded,
       _PreviewTaskType.waiting => Icons.schedule_rounded,
-    };
-  }
-
-  Color get color {
-    return switch (type) {
-      _PreviewTaskType.running => Colors.green,
-      _PreviewTaskType.pending => Colors.orange,
-      _PreviewTaskType.waiting => Colors.blueGrey,
     };
   }
 }

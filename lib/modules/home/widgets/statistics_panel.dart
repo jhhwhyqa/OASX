@@ -18,7 +18,13 @@ const _kStatisticsDateMenuMaxVisibleItems = 4;
 /// Main statistics tab content for the active script.
 class ScriptStatisticsPanel extends StatelessWidget {
   /// Creates the statistics panel.
-  const ScriptStatisticsPanel({super.key});
+  ///
+  /// Set [scrollable] to false when the panel is embedded inside a console
+  /// module list that already owns the scroll view.
+  const ScriptStatisticsPanel({super.key, this.scrollable = true});
+
+  /// Whether this panel owns its vertical scroll view.
+  final bool scrollable;
 
   /// Controller that owns statistics state.
   HomeStatisticsController get controller =>
@@ -28,8 +34,9 @@ class ScriptStatisticsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       final statistics = controller.statistics.value;
-      final availableDates =
-          controller.availableDateKeys.toList(growable: false);
+      final availableDates = controller.availableDateKeys.toList(
+        growable: false,
+      );
       if (statistics == null) {
         return _StatisticsPlaceholder(
           label: _placeholderLabel(),
@@ -40,28 +47,36 @@ class ScriptStatisticsPanel extends StatelessWidget {
       final entries = controller.historyTaskEntries;
       final detailRuns = controller.selectedHistoryDetailRuns;
       final canSortByTime = controller.canSortByTime;
-      return ListView(
-        padding: const EdgeInsets.fromLTRB(
-          _kStatisticsPanelHorizontalPadding,
-          _kStatisticsPanelSectionSpacing,
-          _kStatisticsPanelHorizontalPadding,
-          _kStatisticsPanelSectionSpacing,
+      final children = <Widget>[
+        _HeaderSection(
+          statistics: statistics,
+          availableDateKeys: availableDates,
+          controller: controller,
+          canSortByTime: canSortByTime,
         ),
-        children: [
-          _HeaderSection(
-            statistics: statistics,
-            availableDateKeys: availableDates,
-            controller: controller,
-            canSortByTime: canSortByTime,
-          ),
-          const SizedBox(height: _kStatisticsPanelSectionSpacing),
-          _ChartCard(
-            controller: controller,
-            entries: entries,
-            detailRuns: detailRuns,
-          ),
-        ],
+        const SizedBox(height: _kStatisticsPanelSectionSpacing),
+        _ChartCard(
+          controller: controller,
+          entries: entries,
+          detailRuns: detailRuns,
+        ),
+      ];
+      const padding = EdgeInsets.fromLTRB(
+        _kStatisticsPanelHorizontalPadding,
+        _kStatisticsPanelSectionSpacing,
+        _kStatisticsPanelHorizontalPadding,
+        _kStatisticsPanelSectionSpacing,
       );
+      if (!scrollable) {
+        return Padding(
+          padding: padding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
+        );
+      }
+      return ListView(padding: padding, children: children);
     });
   }
 
@@ -122,10 +137,9 @@ class _HeaderSection extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context)
-                .colorScheme
-                .outlineVariant
-                .withValues(alpha: 0.45),
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withValues(alpha: 0.45),
           ),
         ),
       ),
@@ -187,9 +201,9 @@ class _HeaderTopRow extends StatelessWidget {
           textAlign: TextAlign.end,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
       ],
     );
@@ -255,11 +269,7 @@ class _StatusIcon extends StatelessWidget {
             color: _statusTone(context).withValues(alpha: 0.3),
           ),
         ),
-        child: Icon(
-          _statusIcon(),
-          size: 18,
-          color: _statusTone(context),
-        ),
+        child: Icon(_statusIcon(), size: 18, color: _statusTone(context)),
       ),
     );
   }
@@ -479,7 +489,7 @@ class _StatisticsPopupSelector<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolvedOption =
         options.where((option) => option.value == value).firstOrNull ??
-            options.firstOrNull;
+        options.firstOrNull;
     if (resolvedOption == null) {
       return const SizedBox.shrink();
     }
@@ -547,30 +557,32 @@ class _StatisticsPopupSelector<T> extends StatelessWidget {
         maxHeight:
             _kStatisticsDateMenuMaxVisibleItems * kMinInteractiveDimension,
       ),
-      items: options.map((option) {
-        return PopupMenuItem<T>(
-          value: option.value,
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  option.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+      items: options
+          .map((option) {
+            return PopupMenuItem<T>(
+              value: option.value,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      option.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (option.value == resolvedOption.value) ...[
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.check_rounded,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ],
               ),
-              if (option.value == resolvedOption.value) ...[
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.check_rounded,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ],
-            ],
-          ),
-        );
-      }).toList(growable: false),
+            );
+          })
+          .toList(growable: false),
     );
     if (selectedValue != null && selectedValue != resolvedOption.value) {
       onChanged(selectedValue);

@@ -6,6 +6,8 @@ import 'package:oasx/modules/common/models/config_drag_payload.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
 import 'package:oasx/modules/home/widgets/config_collection_tile.dart';
+import 'package:oasx/modules/home/widgets/home_pane_card.dart';
+import 'package:oasx/modules/home/widgets/script_state_presentation.dart';
 import 'package:oasx/translation/i18n_content.dart';
 
 class ConfigCollectionPanel extends StatefulWidget {
@@ -81,76 +83,76 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Obx(() {
-          final activeDragPayload = widget.controller.activeDragPayload.value;
-          if (activeDragPayload == null) {
-            _stopAutoScroll();
-          }
-          final scripts = widget.controller.visibleScripts;
-          final hasConfigs = widget.controller.orderedScripts.isNotEmpty;
-          final searchValue = widget.controller.searchQuery.value;
-          if (_searchController.text != searchValue) {
-            _searchController.value = TextEditingValue(
-              text: searchValue,
-              selection: TextSelection.collapsed(offset: searchValue.length),
-            );
-          }
-          final listView = DragTarget<ConfigDragPayload>(
-            onWillAcceptWithDetails: (_) => true,
-            onMove: (details) => _handleDragMove(details.offset),
-            onLeave: (_) => _stopAutoScroll(),
-            builder: (context, _, __) => SizedBox.expand(
-              key: _listViewportKey,
-              child: ReorderableListView.builder(
-                scrollController: _listScrollController,
-                buildDefaultDragHandles: false,
-                itemCount: scripts.length,
-                // ignore: deprecated_member_use
-                onReorder: widget.controller.reorderVisibleScripts,
-                itemBuilder: (context, index) {
-                  final script = scripts[index];
-                  return Column(
-                    key: ValueKey<String>('config-item-${script.name}'),
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildDropTargetTile(context, script, index),
-                      if (index < scripts.length - 1)
-                        Divider(
-                          height: 1,
-                          color: Theme.of(context).colorScheme.outlineVariant,
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ),
+    return HomePaneCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      child: Obx(() {
+        final activeDragPayload = widget.controller.activeDragPayload.value;
+        if (activeDragPayload == null) {
+          _stopAutoScroll();
+        }
+        final scripts = widget.controller.visibleScripts;
+        final hasConfigs = widget.controller.orderedScripts.isNotEmpty;
+        final searchValue = widget.controller.searchQuery.value;
+        if (_searchController.text != searchValue) {
+          _searchController.value = TextEditingValue(
+            text: searchValue,
+            selection: TextSelection.collapsed(offset: searchValue.length),
           );
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context),
-              const SizedBox(height: 10),
-              _buildFilters(context),
-              const SizedBox(height: 10),
-              ExpandedOrSizedBox(
-                fillHeight: widget.fillHeight,
-                child: hasConfigs
-                    ? listView
-                    : Center(
-                        child: Text(
-                          I18n.homeEmptyScriptHint.tr,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
+        }
+        final listView = DragTarget<ConfigDragPayload>(
+          onWillAcceptWithDetails: (_) => true,
+          onMove: (details) => _handleDragMove(details.offset),
+          onLeave: (_) => _stopAutoScroll(),
+          builder: (context, _, __) => SizedBox.expand(
+            key: _listViewportKey,
+            child: ReorderableListView.builder(
+              scrollController: _listScrollController,
+              buildDefaultDragHandles: false,
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              itemCount: scripts.length,
+              // ignore: deprecated_member_use
+              onReorder: widget.controller.reorderVisibleScripts,
+              itemBuilder: (context, index) {
+                final script = scripts[index];
+                return Column(
+                  key: ValueKey<String>('config-item-${script.name}'),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildDropTargetTile(context, script, index),
+                    if (index < scripts.length - 1)
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        indent: 14,
+                        endIndent: 8,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withValues(alpha: 0.6),
                       ),
-              ),
-            ],
-          );
-        }),
-      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(context),
+            const SizedBox(height: 8),
+            _buildRefreshProgress(context),
+            const SizedBox(height: 8),
+            _buildFilters(context),
+            const SizedBox(height: 8),
+            ExpandedOrSizedBox(
+              fillHeight: widget.fillHeight,
+              child: scripts.isEmpty
+                  ? _buildEmptyState(context, hasConfigs: hasConfigs)
+                  : listView,
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -177,19 +179,18 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
       builder: (context, candidateData, rejectedData) {
         final candidate = candidateData.isNotEmpty ? candidateData.first : null;
         final isHighlighted = _canAcceptPayload(script.name, candidate);
+        final scheme = Theme.of(context).colorScheme;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           margin: const EdgeInsets.symmetric(vertical: 2),
           decoration: BoxDecoration(
             color: isHighlighted
-                ? Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer.withValues(alpha: 0.28)
+                ? scheme.primary.withValues(alpha: 0.08)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: isHighlighted
-                  ? Theme.of(context).colorScheme.primary
+                  ? scheme.primary.withValues(alpha: 0.7)
                   : Colors.transparent,
             ),
           ),
@@ -198,9 +199,16 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
             script: script,
             dragHandle: Tooltip(
               message: I18n.homeScriptReorder.tr,
-              child: ReorderableDragStartListener(
-                index: index,
-                child: const Icon(Icons.drag_indicator_rounded, size: 20),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.grab,
+                child: ReorderableDragStartListener(
+                  index: index,
+                  child: Icon(
+                    Icons.drag_indicator_rounded,
+                    size: 18,
+                    color: scheme.outline,
+                  ),
+                ),
               ),
             ),
             onTap: () => widget.onActivateScript(script.name),
@@ -282,11 +290,6 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final style = Theme.of(context).textTheme.titleMedium;
-    final separatorStyle = style?.copyWith(
-      color: Theme.of(context).colorScheme.outline,
-      fontWeight: FontWeight.w600,
-    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final compactHeader =
@@ -294,8 +297,6 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
             ConfigCollectionPanel._compactHeaderThreshold;
         final title = _HeaderTitle(
           controller: widget.controller,
-          style: style,
-          separatorStyle: separatorStyle,
           centered: compactHeader,
         );
         final actions = _HeaderActions(
@@ -319,11 +320,28 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Center(child: title),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Center(child: actions),
           ],
         );
       },
+    );
+  }
+
+  /// Shows a slim progress line while the config list is refreshing.
+  Widget _buildRefreshProgress(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 2,
+      child: widget.refreshingScripts
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                minHeight: 2,
+                backgroundColor: scheme.surfaceContainerHighest,
+              ),
+            )
+          : null,
     );
   }
 
@@ -338,8 +356,8 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
         final filterButton = _FilterButton(
           filter: filter,
           isFiltered: isFiltered,
+          expandLabel: !compactFilters,
           onSelected: widget.controller.setStateFilterValue,
-          stateLabel: _stateLabel,
         );
         if (!compactFilters) {
           _showCompactSearch = false;
@@ -349,6 +367,7 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
                 child: _SearchField(
                   controller: _searchController,
                   onChanged: widget.controller.setSearchQuery,
+                  onClear: _clearSearch,
                 ),
               ),
               const SizedBox(width: 8),
@@ -366,6 +385,7 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
                   child: _SearchField(
                     controller: _searchController,
                     onChanged: widget.controller.setSearchQuery,
+                    onClear: _clearSearch,
                   ),
                 ),
               ),
@@ -380,16 +400,24 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
                     IconButton(
                       tooltip: I18n.homeScriptSearchHint.tr,
                       onPressed: _toggleCompactSearch,
+                      visualDensity: VisualDensity.compact,
                       constraints: const BoxConstraints.tightFor(
-                        width: 40,
-                        height: 40,
+                        width: 38,
+                        height: 38,
+                      ),
+                      style: IconButton.styleFrom(
+                        foregroundColor: _showCompactSearch
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       icon: Icon(
                         _showCompactSearch
                             ? Icons.search_off_rounded
                             : Icons.search_rounded,
+                        size: 20,
                       ),
                     ),
+                    const SizedBox(width: 6),
                     filterButton,
                   ],
                 ),
@@ -399,6 +427,18 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
         );
       },
     );
+  }
+
+  /// Clears both the text search and the state filter.
+  void _clearSearch() {
+    _searchController.clear();
+    widget.controller.setSearchQuery('');
+  }
+
+  /// Clears every active collection filter and restores the full list.
+  void _clearFilters() {
+    _clearSearch();
+    widget.controller.setStateFilterValue(HomeScriptStateFilter.all);
   }
 
   /// Toggles the compact search field shown above the filter buttons.
@@ -411,73 +451,134 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
     });
   }
 
-  String _stateLabel(HomeScriptStateFilter value) {
-    return switch (value) {
-      HomeScriptStateFilter.all => I18n.selectAll.tr,
-      HomeScriptStateFilter.running => I18n.run.tr,
-      HomeScriptStateFilter.abnormal => I18n.homeScriptAbnormal.tr,
-      HomeScriptStateFilter.stopped => I18n.stop.tr,
-      HomeScriptStateFilter.offline => I18n.homeScriptOffline.tr,
-    };
+  Widget _buildEmptyState(BuildContext context, {required bool hasConfigs}) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+                shape: BoxShape.circle,
+              ),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  hasConfigs
+                      ? Icons.search_off_rounded
+                      : Icons.folder_open_rounded,
+                  size: 22,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              hasConfigs ? I18n.noData.tr : I18n.homeEmptyScriptHint.tr,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            if (hasConfigs) ...[
+              const SizedBox(height: 4),
+              TextButton.icon(
+                onPressed: _clearFilters,
+                icon: const Icon(Icons.filter_alt_off_rounded, size: 16),
+                label: Text(I18n.clear.tr),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
 class _HeaderTitle extends StatelessWidget {
-  const _HeaderTitle({
-    required this.controller,
-    required this.style,
-    required this.separatorStyle,
-    required this.centered,
-  });
+  const _HeaderTitle({required this.controller, required this.centered});
 
   final HomeDashboardController controller;
-  final TextStyle? style;
-  final TextStyle? separatorStyle;
   final bool centered;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Wrap(
       alignment: centered ? WrapAlignment.center : WrapAlignment.start,
       crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 8,
-      runSpacing: 4,
+      spacing: 10,
+      runSpacing: 2,
       children: [
-        Text(I18n.scriptList.tr, style: style),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text:
-                    '${controller.countScriptsByState(HomeScriptStateFilter.running)}',
-                style: style?.copyWith(
-                  color: Colors.green.shade600,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              TextSpan(text: '/', style: separatorStyle),
-              TextSpan(
-                text:
-                    '${controller.countScriptsByState(HomeScriptStateFilter.stopped)}',
-                style: style?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              TextSpan(text: '/', style: separatorStyle),
-              TextSpan(
-                text:
-                    '${controller.countScriptsByState(HomeScriptStateFilter.abnormal)}',
-                style: style?.copyWith(
-                  color: Colors.orange.shade700,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+        Text(
+          I18n.scriptList.tr,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
           ),
         ),
+        _StatusCounts(controller: controller),
       ],
     );
+  }
+}
+
+/// Compact running / stopped / abnormal counters for the header.
+class _StatusCounts extends StatelessWidget {
+  const _StatusCounts({required this.controller});
+
+  static const _states = [
+    HomeScriptStateFilter.running,
+    HomeScriptStateFilter.stopped,
+    HomeScriptStateFilter.abnormal,
+  ];
+
+  final HomeDashboardController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final theme = Theme.of(context);
+      final scheme = theme.colorScheme;
+      return Wrap(
+        spacing: 9,
+        runSpacing: 2,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: _states.map((state) {
+          return Tooltip(
+            message: state.filterLabel,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: state.color(context),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${controller.countScriptsByState(state)}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    });
   }
 }
 
@@ -500,77 +601,139 @@ class _HeaderActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: centered
-          ? MainAxisAlignment.center
-          : MainAxisAlignment.end,
-      children: [
-        IconButton(
-          tooltip: I18n.homeConnectionRetryAction.tr,
-          onPressed: refreshingScripts ? null : onRefreshScriptsTap,
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-          icon: refreshingScripts
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.refresh_rounded),
-        ),
-        IconButton(
-          tooltip: controller.isLinkModeEnabled.value
-              ? I18n.closeTheLinker.tr
-              : I18n.turnOnTheLinker.tr,
-          onPressed: controller.toggleLinkMode,
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-          style: IconButton.styleFrom(
-            backgroundColor: controller.isLinkModeEnabled.value
-                ? Theme.of(context).colorScheme.primaryContainer
-                : null,
-            foregroundColor: controller.isLinkModeEnabled.value
-                ? Theme.of(context).colorScheme.onPrimaryContainer
-                : null,
+    return Obx(() {
+      final scheme = Theme.of(context).colorScheme;
+      final linkModeEnabled = controller.isLinkModeEnabled.value;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: centered
+            ? MainAxisAlignment.center
+            : MainAxisAlignment.end,
+        children: [
+          IconButton(
+            tooltip: I18n.homeConnectionRetryAction.tr,
+            onPressed: refreshingScripts ? null : onRefreshScriptsTap,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            style: IconButton.styleFrom(
+              foregroundColor: scheme.onSurfaceVariant,
+              disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
+            ),
+            icon: refreshingScripts
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded, size: 20),
           ),
-          icon: const Icon(Icons.link_rounded),
-        ),
-        IconButton(
-          tooltip: I18n.configAdd.tr,
-          onPressed: loadingAddScript ? null : onAddScriptTap,
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-          icon: loadingAddScript
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.add_rounded),
-        ),
-      ],
-    );
+          const SizedBox(width: 2),
+          IconButton(
+            tooltip: linkModeEnabled
+                ? I18n.closeTheLinker.tr
+                : I18n.turnOnTheLinker.tr,
+            onPressed: controller.toggleLinkMode,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            style: IconButton.styleFrom(
+              backgroundColor: linkModeEnabled ? scheme.primaryContainer : null,
+              foregroundColor: linkModeEnabled
+                  ? scheme.onPrimaryContainer
+                  : scheme.onSurfaceVariant,
+            ),
+            icon: const Icon(Icons.link_rounded, size: 20),
+          ),
+          const SizedBox(width: 2),
+          IconButton.filledTonal(
+            tooltip: I18n.configAdd.tr,
+            onPressed: loadingAddScript ? null : onAddScriptTap,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: loadingAddScript
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.add_rounded, size: 20),
+          ),
+        ],
+      );
+    });
   }
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.onChanged});
+  const _SearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final borderSide = BorderSide(color: scheme.outlineVariant);
+    return TextField(
       controller: controller,
-      decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.search_rounded),
-        hintText: I18n.homeScriptSearchHint.tr,
-        border: const OutlineInputBorder(),
-        isDense: true,
-      ),
       onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        hintText: I18n.homeScriptSearchHint.tr,
+        hintStyle: theme.textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          size: 18,
+          color: scheme.onSurfaceVariant,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 34,
+          minHeight: 34,
+        ),
+        suffixIcon: controller.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: I18n.clear.tr,
+                onPressed: onClear,
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints.tightFor(
+                  width: 28,
+                  height: 28,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.close_rounded, size: 16),
+              ),
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 30,
+          minHeight: 30,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: borderSide,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: borderSide,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(
+            color: scheme.primary.withValues(alpha: 0.8),
+            width: 1.4,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -579,35 +742,77 @@ class _FilterButton extends StatelessWidget {
   const _FilterButton({
     required this.filter,
     required this.isFiltered,
+    required this.expandLabel,
     required this.onSelected,
-    required this.stateLabel,
   });
 
   final HomeScriptStateFilter filter;
   final bool isFiltered;
+  final bool expandLabel;
   final ValueChanged<HomeScriptStateFilter> onSelected;
-  final String Function(HomeScriptStateFilter value) stateLabel;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: 40,
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final showLabel = isFiltered && expandLabel;
+    return Tooltip(
+      message: filter.filterLabel,
       child: PopupMenuButton<HomeScriptStateFilter>(
+        tooltip: '',
         padding: EdgeInsets.zero,
-        tooltip: stateLabel(filter),
         initialValue: filter,
         onSelected: onSelected,
         itemBuilder: (context) => ConfigCollectionPanel._visibleStateFilters
             .map(
-              (value) => PopupMenuItem<HomeScriptStateFilter>(
+              (value) => CheckedPopupMenuItem<HomeScriptStateFilter>(
                 value: value,
-                child: Text(stateLabel(value)),
+                checked: value == filter,
+                child: Text(value.filterLabel),
               ),
             )
             .toList(),
-        icon: Icon(
-          Icons.filter_list_rounded,
-          color: isFiltered ? Theme.of(context).colorScheme.primary : null,
+        child: Container(
+          height: 38,
+          constraints: const BoxConstraints(minWidth: 38),
+          padding: EdgeInsets.symmetric(horizontal: showLabel ? 11 : 0),
+          decoration: BoxDecoration(
+            color: isFiltered
+                ? scheme.primaryContainer.withValues(alpha: 0.55)
+                : null,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isFiltered
+                  ? scheme.primary.withValues(alpha: 0.5)
+                  : scheme.outlineVariant,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.filter_list_rounded,
+                size: 18,
+                color: isFiltered
+                    ? scheme.onPrimaryContainer
+                    : scheme.onSurfaceVariant,
+              ),
+              if (showLabel) ...[
+                const SizedBox(width: 6),
+                Text(
+                  filter.filterLabel,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

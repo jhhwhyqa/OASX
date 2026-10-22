@@ -3,9 +3,11 @@ import 'package:get/get.dart';
 import 'package:oasx/modules/args/index.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/config_actions.dart';
+import 'package:oasx/modules/home/models/home_console_layout.dart';
 import 'package:oasx/modules/home/models/home_workbench_layout.dart';
 import 'package:oasx/modules/home/widgets/active_config_panel.dart';
 import 'package:oasx/modules/home/widgets/config_collection_panel.dart';
+import 'package:oasx/modules/home/widgets/home_console.dart';
 import 'package:oasx/modules/home/widgets/home_workbench_body.dart';
 import 'package:oasx/modules/home/widgets/workbench_sidebar_panel.dart';
 import 'package:oasx/service/script_service.dart';
@@ -31,55 +33,92 @@ class ConfigWorkbench extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HomeWorkbenchBody(
-      controller: controller,
-      collectionBuilder: (layoutMode) => ConfigCollectionPanel(
-        controller: controller,
-        fillHeight: true,
-        loadingAddScript: loadingAddScript,
-        refreshingScripts: refreshingScripts,
-        onAddScriptTap: onAddScriptTap,
-        onRefreshScriptsTap: onRefreshScriptsTap,
-        onActivateScript: (scriptName) =>
-            _activateScript(context, scriptName, layoutMode),
-        onTogglePower: (scriptName, enable) =>
-            controller.applySelectionPowerToggle(
-              sourceScript: scriptName,
-              enable: enable,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= kHomeConsoleMinWidth) {
+          return HomeConsole(
+            controller: controller,
+            loadingAddScript: loadingAddScript,
+            refreshingScripts: refreshingScripts,
+            onAddScriptTap: onAddScriptTap,
+            onRefreshScriptsTap: onRefreshScriptsTap,
+            onSelectScript: (scriptName) => _activateScript(
+              context,
+              scriptName,
+              HomeWorkbenchLayoutMode.threePane,
             ),
-        onRenameScript: (scriptName) => _renameScript(context, scriptName),
-        onExportScript: _exportScript,
-        onDeleteScript: (scriptName) => _deleteScript(context, scriptName),
-      ),
-      detailsBuilder: (layoutMode, onExpandRightSidebar) => ActiveConfigPanel(
-        controller: controller,
-        layoutMode: layoutMode,
-        onChangeTab: (tab) => _changeTab(context, tab),
-        onOpenTask: (taskName, source) =>
-            _openTaskFromSource(context, taskName, source),
-        onTogglePower: (scriptName, enable) =>
-            controller.applySelectionPowerToggle(
-              sourceScript: scriptName,
-              enable: enable,
-            ),
-        onRenameScript: (scriptName) => _renameScript(context, scriptName),
-        onDeleteScript: (scriptName) => _deleteScript(context, scriptName),
-        onSetNextRun: _setTaskNextRun,
-        onQuickRun: (taskName) => _quickSchedule(taskName, true),
-        onQuickWait: (taskName) => _quickSchedule(taskName, false),
-        onBulkQuickRun: () => _bulkQuickSchedule(true),
-        onBulkQuickWait: () => _bulkQuickSchedule(false),
-        onExpandRightSidebar: onExpandRightSidebar,
-        onBackToScripts: layoutMode == HomeWorkbenchLayoutMode.singlePane
-            ? () => _showScriptListPage(context)
-            : null,
-      ),
-      sidebar: Obx(() {
-        return WorkbenchSidebarPanel(
+            onTogglePower: (scriptName, enable) =>
+                controller.applySelectionPowerToggle(
+                  sourceScript: scriptName,
+                  enable: enable,
+                ),
+            onRenameScript: (scriptName) => _renameScript(context, scriptName),
+            onDeleteScript: (scriptName) => _deleteScript(context, scriptName),
+            onExportScript: _exportScript,
+            onSetTaskNextRun: _setTaskNextRun,
+            onQuickRunTask: (taskName) => _quickSchedule(taskName, true),
+            onQuickWaitTask: (taskName) => _quickSchedule(taskName, false),
+            onBulkQuickRun: () => _bulkQuickSchedule(true),
+            onBulkQuickWait: () => _bulkQuickSchedule(false),
+            onOpenTask: (taskName, source) =>
+                _openTaskFromSource(context, taskName, source),
+          );
+        }
+        return HomeWorkbenchBody(
           controller: controller,
-          scriptName: controller.activeScriptName.value,
+          collectionBuilder: (layoutMode) => ConfigCollectionPanel(
+            controller: controller,
+            fillHeight: true,
+            loadingAddScript: loadingAddScript,
+            refreshingScripts: refreshingScripts,
+            onAddScriptTap: onAddScriptTap,
+            onRefreshScriptsTap: onRefreshScriptsTap,
+            onActivateScript: (scriptName) =>
+                _activateScript(context, scriptName, layoutMode),
+            onTogglePower: (scriptName, enable) =>
+                controller.applySelectionPowerToggle(
+                  sourceScript: scriptName,
+                  enable: enable,
+                ),
+            onRenameScript: (scriptName) => _renameScript(context, scriptName),
+            onExportScript: _exportScript,
+            onDeleteScript: (scriptName) => _deleteScript(context, scriptName),
+          ),
+          detailsBuilder: (layoutMode, onExpandRightSidebar) =>
+              ActiveConfigPanel(
+                controller: controller,
+                layoutMode: layoutMode,
+                onChangeTab: (tab) => _changeTab(context, tab),
+                onOpenTask: (taskName, source) =>
+                    _openTaskFromSource(context, taskName, source),
+                onTogglePower: (scriptName, enable) =>
+                    controller.applySelectionPowerToggle(
+                      sourceScript: scriptName,
+                      enable: enable,
+                    ),
+                onRenameScript: (scriptName) =>
+                    _renameScript(context, scriptName),
+                onDeleteScript: (scriptName) =>
+                    _deleteScript(context, scriptName),
+                onSetNextRun: _setTaskNextRun,
+                onQuickRun: (taskName) => _quickSchedule(taskName, true),
+                onQuickWait: (taskName) => _quickSchedule(taskName, false),
+                onBulkQuickRun: () => _bulkQuickSchedule(true),
+                onBulkQuickWait: () => _bulkQuickSchedule(false),
+                onExpandRightSidebar: onExpandRightSidebar,
+                onBackToScripts:
+                    layoutMode == HomeWorkbenchLayoutMode.singlePane
+                    ? () => _showScriptListPage(context)
+                    : null,
+              ),
+          sidebar: Obx(() {
+            return WorkbenchSidebarPanel(
+              controller: controller,
+              scriptName: controller.activeScriptName.value,
+            );
+          }),
         );
-      }),
+      },
     );
   }
 

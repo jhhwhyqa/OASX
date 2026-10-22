@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/models/home_workbench_layout.dart';
+import 'package:oasx/modules/home/widgets/home_pane_card.dart';
 import 'package:oasx/modules/home/widgets/log_center_panel.dart';
 import 'package:oasx/modules/home/widgets/statistics_panel.dart';
+import 'package:oasx/modules/home/widgets/workbench_tab_chip.dart';
 import 'package:oasx/translation/i18n_content.dart';
 
 /// Hosts the desktop right sidebar for statistics and logs.
@@ -23,47 +25,43 @@ class WorkbenchSidebarPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Obx(() {
-          final tabs = controller.workbenchSidebarTabsFor(
-            HomeWorkbenchLayoutMode.threePane,
-          );
-          final currentTab = controller.displayedWorkbenchSidebarTabFor(
-            HomeWorkbenchLayoutMode.threePane,
-          );
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: tabs
-                    .map(
-                      (tab) => ChoiceChip(
-                        label: Text(_tabLabel(tab)),
-                        showCheckmark: false,
-                        selected: currentTab == tab,
-                        onSelected: (_) =>
-                            controller.setActiveWorkbenchSidebarTabValue(tab),
-                      ),
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: switch (currentTab) {
-                  HomeWorkbenchTab.stats => const ScriptStatisticsPanel(),
-                  HomeWorkbenchTab.logs =>
-                    LogCenterPanel(scriptName: scriptName),
-                  _ => const SizedBox.shrink(),
-                },
-              ),
-            ],
-          );
-        }),
-      ),
+    return HomePaneCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Obx(() {
+        final tabs = controller.workbenchSidebarTabsFor(
+          HomeWorkbenchLayoutMode.threePane,
+        );
+        final currentTab = controller.displayedWorkbenchSidebarTabFor(
+          HomeWorkbenchLayoutMode.threePane,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: tabs
+                  .map(
+                    (tab) => WorkbenchTabChip(
+                      label: _tabLabel(tab),
+                      selected: currentTab == tab,
+                      onSelected: () =>
+                          controller.setActiveWorkbenchSidebarTabValue(tab),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: switch (currentTab) {
+                HomeWorkbenchTab.stats => const ScriptStatisticsPanel(),
+                HomeWorkbenchTab.logs => LogCenterPanel(scriptName: scriptName),
+                _ => const SizedBox.shrink(),
+              },
+            ),
+          ],
+        );
+      }),
     );
   }
 

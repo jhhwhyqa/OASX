@@ -66,17 +66,17 @@ class _TaskStatusPanelState extends State<TaskStatusPanel> {
           .toList();
       return Column(
         children: [
-          _buildSearchField(),
-          const SizedBox(height: 12),
+          _buildSearchField(context),
+          const SizedBox(height: 8),
           Expanded(
             child: visibleTasks.isEmpty
-                ? Center(child: Text(_emptyMessage))
+                ? _buildEmptyState(context)
                 : ListView.separated(
                     key: const PageStorageKey<String>('home-task-status-list'),
                     controller: _scrollController,
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.only(bottom: 2),
                     itemCount: visibleTasks.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (_, __) => const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final task = visibleTasks[index];
                       return TaskStatusRow(
@@ -107,24 +107,110 @@ class _TaskStatusPanelState extends State<TaskStatusPanel> {
   }
 
   /// Builds the local overview search field above the task list.
-  Widget _buildSearchField() {
+  Widget _buildSearchField(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final borderSide = BorderSide(color: scheme.outlineVariant);
     return TextField(
       controller: _searchController,
-      decoration: InputDecoration(
-        isDense: true,
-        prefixIcon: const Icon(Icons.search_rounded),
-        hintText: I18n.taskSearchHint.tr,
-        border: const OutlineInputBorder(),
-      ),
       onChanged: (value) => setState(() {
         _searchQuery = value.trim().toLowerCase();
       }),
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        hintText: I18n.taskSearchHint.tr,
+        hintStyle: theme.textTheme.bodySmall?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          size: 17,
+          color: scheme.onSurfaceVariant,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 32,
+          minHeight: 32,
+        ),
+        suffixIcon: _searchController.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: I18n.clear.tr,
+                onPressed: _clearSearch,
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints.tightFor(
+                  width: 28,
+                  height: 28,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.close_rounded, size: 15),
+              ),
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 28,
+          minHeight: 28,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: borderSide,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: borderSide,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(
+            color: scheme.primary.withValues(alpha: 0.8),
+            width: 1.3,
+          ),
+        ),
+      ),
     );
+  }
+
+  /// Clears the local task search.
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+    });
   }
 
   /// Returns the placeholder message for the current filtered view.
   String get _emptyMessage {
     return _searchQuery.isEmpty ? I18n.homeNoTask.tr : I18n.taskNotFound.tr;
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _searchQuery.isEmpty
+                  ? Icons.inbox_outlined
+                  : Icons.search_off_rounded,
+              size: 24,
+              color: scheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _emptyMessage,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Collects the current overview task snapshot from the active script model.

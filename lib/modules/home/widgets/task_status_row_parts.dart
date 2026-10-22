@@ -21,12 +21,14 @@ class _TaskMeta extends StatelessWidget {
       sourceConfig: sourceScriptName,
       taskName: task.name,
     );
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final title = Text(
       task.name.tr,
       maxLines: 1,
       overflow: TextOverflow.visible,
       softWrap: false,
-      style: Theme.of(context).textTheme.labelLarge,
+      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,11 +49,12 @@ class _TaskMeta extends StatelessWidget {
           const SizedBox(height: 2),
           DateTimePicker(
             value: task.timeText,
-            notHoverStyle: Theme.of(context).textTheme.labelMedium,
-            hoverStyle: Theme.of(context)
-                .textTheme
-                .labelMedium
-                ?.copyWith(color: Theme.of(context).colorScheme.primary),
+            notHoverStyle: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+            hoverStyle: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.primary,
+            ),
             onChange: (value) => unawaited(onSetNextRun(task.name, value)),
           ),
         ],
@@ -67,15 +70,21 @@ class _TaskTypeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = switch (type) {
-      TaskStatusType.running =>
-        const Icon(Icons.bolt_rounded, color: Colors.green),
-      TaskStatusType.pending =>
-        const Icon(Icons.layers_rounded, color: Colors.orange),
-      TaskStatusType.waiting =>
-        const Icon(Icons.schedule_rounded, color: Colors.blueGrey),
+    final colors = OasxStateColors.of(context);
+    final (icon, color) = switch (type) {
+      TaskStatusType.running => (Icons.bolt_rounded, colors.running),
+      TaskStatusType.pending => (Icons.layers_rounded, colors.pending),
+      TaskStatusType.waiting => (Icons.schedule_rounded, colors.waiting),
     };
-    return SizedBox(width: 28, height: 28, child: Center(child: icon));
+    return Container(
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 16, color: color),
+    );
   }
 }
 
@@ -128,11 +137,17 @@ class _TaskActionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return IconButton(
       tooltip: tooltip,
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+      iconSize: 19,
+      style: IconButton.styleFrom(
+        foregroundColor: scheme.onSurfaceVariant,
+        disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
+      ),
       onPressed: onPressed,
       icon: Icon(icon),
     );

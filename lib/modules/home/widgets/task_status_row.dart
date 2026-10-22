@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oasx/config/theme.dart';
 import 'package:oasx/modules/args/index.dart';
 import 'package:oasx/modules/common/models/config_drag_payload.dart';
 import 'package:oasx/modules/common/widgets/drag_copy_feedback.dart';
@@ -76,11 +77,11 @@ class TaskStatusRow extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: _foregroundColor(context, rowBackground),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: _borderColor(context)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(8),
           child: SplitScrollRow(
             minHeight: 40,
             trailingExtent: _actionExtent,
@@ -118,13 +119,13 @@ class TaskStatusRow extends StatelessWidget {
   Color _rowBackground(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return switch (task.type) {
-      TaskStatusType.running => scheme.tertiaryContainer.withValues(
-        alpha: 0.24,
+      TaskStatusType.running => scheme.primaryContainer.withValues(alpha: 0.22),
+      TaskStatusType.pending => scheme.surfaceContainerHigh.withValues(
+        alpha: 0.62,
       ),
-      TaskStatusType.pending => scheme.secondaryContainer.withValues(
-        alpha: 0.2,
+      TaskStatusType.waiting => scheme.surfaceContainerHigh.withValues(
+        alpha: 0.30,
       ),
-      TaskStatusType.waiting => scheme.surfaceContainerHigh,
     };
   }
 
@@ -144,9 +145,9 @@ class TaskStatusRow extends StatelessWidget {
   Color _borderColor(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return switch (task.type) {
-      TaskStatusType.running => Colors.green.withValues(alpha: 0.28),
-      TaskStatusType.pending => Colors.orange.withValues(alpha: 0.3),
-      TaskStatusType.waiting => scheme.outlineVariant.withValues(alpha: 0.7),
+      TaskStatusType.running => scheme.primary.withValues(alpha: 0.32),
+      TaskStatusType.pending => scheme.outlineVariant.withValues(alpha: 0.7),
+      TaskStatusType.waiting => scheme.outlineVariant.withValues(alpha: 0.55),
     };
   }
 }
