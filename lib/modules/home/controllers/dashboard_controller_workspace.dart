@@ -104,6 +104,9 @@ extension HomeDashboardWorkspaceX on HomeDashboardController {
   }
 
   bool get isStatsVisibleInCurrentLayout {
+    if (isConsoleStatsVisible.value) {
+      return true;
+    }
     if (workbenchLayoutMode.value == HomeWorkbenchLayoutMode.threePane) {
       return displayedWorkbenchSidebarTabFor(workbenchLayoutMode.value) ==
           HomeWorkbenchTab.stats;

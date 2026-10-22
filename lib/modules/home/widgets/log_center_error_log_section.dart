@@ -53,7 +53,7 @@ extension _LogCenterErrorDetailLogSectionX on LogCenterErrorDetailView {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: lines.map((line) {
               return Padding(
-                padding: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.fromLTRB(14, 0, 12, 0),
                 child: LogCenterLogText(
                   line: line,
                   maxLines: null,
@@ -85,7 +85,7 @@ extension _LogCenterErrorDetailLogSectionX on LogCenterErrorDetailView {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: lines.map((line) {
               return Padding(
-                padding: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.fromLTRB(14, 0, 12, 0),
                 child: LogCenterLogText(
                   line: line,
                   maxLines: 1,

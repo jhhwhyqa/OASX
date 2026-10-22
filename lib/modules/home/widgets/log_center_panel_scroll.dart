@@ -103,6 +103,9 @@ void _handleLogCenterScrollPosition(_LogCenterPanelState state) {
       offset >=
       position.maxScrollExtent - _LogCenterPanelState._bottomThreshold;
   controller.handleViewportPosition(isAtBottom: isAtBottom);
+  if (state._hasLogFilter) {
+    return;
+  }
   _saveLogCenterViewport(state);
   final linesBeforeViewport = _firstVisibleLogIndex(offset);
   if (linesBeforeViewport <= _LogCenterPanelState._prefetchRemainingLines) {
@@ -112,6 +115,9 @@ void _handleLogCenterScrollPosition(_LogCenterPanelState state) {
 
 /// Persists the current info log viewport for script revisit recovery.
 void _saveLogCenterViewport(_LogCenterPanelState state) {
+  if (state._hasLogFilter) {
+    return;
+  }
   final controller = state._controller;
   final scrollController = state._scrollController;
   if (controller == null ||

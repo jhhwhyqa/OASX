@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:oasx/api/api_client.dart';
 import 'package:oasx/modules/common/models/config_drag_payload.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
+import 'package:oasx/modules/home/models/home_console_layout.dart';
 import 'package:oasx/modules/home/models/home_workbench_layout.dart';
 import 'package:oasx/modules/settings/controllers/settings_controller.dart';
 import 'package:oasx/modules/common/models/storage_key.dart';
@@ -126,6 +128,9 @@ class HomeDashboardController extends GetxController {
   final workbenchCollectionWidth = kHomeWorkbenchDefaultCollectionWidth.obs;
   final workbenchSplitRatio = kHomeWorkbenchDefaultSplitRatio.obs;
   final workbenchLayoutMode = HomeWorkbenchLayoutMode.singlePane.obs;
+  final homeConsoleLeftRatio = kHomeConsoleDefaultLeftRatio.obs;
+  final homeConsoleRightRatio = kHomeConsoleDefaultRightRatio.obs;
+  final isConsoleStatsVisible = false.obs;
   final activeWorkbenchTab = HomeWorkbenchTab.status.obs;
   final _lastPrimaryWorkbenchTab = HomeWorkbenchTab.status.obs;
   final activeWorkbenchSidebarTab = HomeWorkbenchTab.logs.obs;
@@ -143,6 +148,7 @@ class HomeDashboardController extends GetxController {
     _loadSelection();
     _loadWorkbenchCollectionWidth();
     _loadWorkbenchSplitRatio();
+    _loadHomeConsoleLayout();
     syncWorkspaceState();
     _workspaceSyncWorker = everAll(
       [_scriptService.scriptOrderList, _scriptService.scriptModelMap],

@@ -39,8 +39,92 @@ const Map<String, Color> colorSeedMap = {
   'Yellow': Colors.yellow,
   'Orange': Colors.orange,
   'Deep Orange': Colors.deepOrange,
-  'Pink': Colors.pink
+  'Pink': Colors.pink,
 };
+
+/// Semantic colors shared by the home workbench surfaces.
+///
+/// Components read these values through [OasxStateColors.of] so the same
+/// widget tree keeps adequate contrast in both light and dark themes.
+@immutable
+class OasxStateColors extends ThemeExtension<OasxStateColors> {
+  const OasxStateColors({
+    required this.running,
+    required this.stopped,
+    required this.abnormal,
+    required this.offline,
+    required this.pending,
+    required this.waiting,
+  });
+
+  /// Palette tuned for light surfaces.
+  static const OasxStateColors light = OasxStateColors(
+    running: Color(0xFF2E7D32),
+    stopped: Color(0xFF6B6F73),
+    abnormal: Color(0xFFB45F06),
+    offline: Color(0xFF1565C0),
+    pending: Color(0xFFB45F06),
+    waiting: Color(0xFF546E7A),
+  );
+
+  /// Palette tuned for dark surfaces.
+  static const OasxStateColors dark = OasxStateColors(
+    running: Color(0xFF81C784),
+    stopped: Color(0xFF9AA0A6),
+    abnormal: Color(0xFFFFB74D),
+    offline: Color(0xFF64B5F6),
+    pending: Color(0xFFFFB74D),
+    waiting: Color(0xFF90A4AE),
+  );
+
+  final Color running;
+  final Color stopped;
+  final Color abnormal;
+  final Color offline;
+  final Color pending;
+  final Color waiting;
+
+  /// Resolves the palette for the active theme.
+  static OasxStateColors of(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.extension<OasxStateColors>() ??
+        (theme.brightness == Brightness.dark ? dark : light);
+  }
+
+  @override
+  OasxStateColors copyWith({
+    Color? running,
+    Color? stopped,
+    Color? abnormal,
+    Color? offline,
+    Color? pending,
+    Color? waiting,
+  }) {
+    return OasxStateColors(
+      running: running ?? this.running,
+      stopped: stopped ?? this.stopped,
+      abnormal: abnormal ?? this.abnormal,
+      offline: offline ?? this.offline,
+      pending: pending ?? this.pending,
+      waiting: waiting ?? this.waiting,
+    );
+  }
+
+  @override
+  OasxStateColors lerp(ThemeExtension<OasxStateColors>? other, double t) {
+    if (other is! OasxStateColors) {
+      return this;
+    }
+    return OasxStateColors(
+      running: Color.lerp(running, other.running, t)!,
+      stopped: Color.lerp(stopped, other.stopped, t)!,
+      abnormal: Color.lerp(abnormal, other.abnormal, t)!,
+      offline: Color.lerp(offline, other.offline, t)!,
+      pending: Color.lerp(pending, other.pending, t)!,
+      waiting: Color.lerp(waiting, other.waiting, t)!,
+    );
+  }
+}
 
 ThemeData lightTheme = ThemeData(
   colorSchemeSeed: ColorSeed.baseColor.color,
@@ -49,7 +133,9 @@ ThemeData lightTheme = ThemeData(
   textTheme: _buildTextTheme(Brightness.light),
   scaffoldBackgroundColor: const Color.fromRGBO(255, 251, 255, 1),
   navigationRailTheme: const NavigationRailThemeData(
-      backgroundColor: Color.fromRGBO(255, 251, 255, 1)),
+    backgroundColor: Color.fromRGBO(255, 251, 255, 1),
+  ),
+  extensions: const <ThemeExtension<dynamic>>[OasxStateColors.light],
 );
 
 ThemeData darkTheme = ThemeData(
@@ -59,7 +145,9 @@ ThemeData darkTheme = ThemeData(
   textTheme: _buildTextTheme(Brightness.dark),
   scaffoldBackgroundColor: const Color.fromRGBO(49, 48, 51, 1),
   navigationRailTheme: const NavigationRailThemeData(
-      backgroundColor: Color.fromRGBO(49, 48, 51, 1)),
+    backgroundColor: Color.fromRGBO(49, 48, 51, 1),
+  ),
+  extensions: const <ThemeExtension<dynamic>>[OasxStateColors.dark],
 );
 
 TextTheme _buildTextTheme(Brightness brightness) {
@@ -77,9 +165,9 @@ TextTheme _buildTextTheme(Brightness brightness) {
   if (kIsWeb) {
     return _applyFontFallback(baseTheme, _webChineseFontFallback);
   }
-  return baseTheme.apply(fontFamily: 'LatoLato').useSystemChineseFont(
-        brightness,
-      );
+  return baseTheme
+      .apply(fontFamily: 'LatoLato')
+      .useSystemChineseFont(brightness);
 }
 
 TextTheme _applyFontFallback(TextTheme textTheme, List<String> fallback) {

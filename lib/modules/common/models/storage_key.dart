@@ -19,6 +19,8 @@ enum StorageKey {
   homeControlScriptList,
   homeWorkbenchCollectionWidth,
   homeWorkbenchSplitRatio,
+  homeConsoleLeftRatio,
+  homeConsoleRightRatio,
   autoDeploy,
   scriptOrder,
 }

@@ -9,6 +9,8 @@ class LogCenterInfoView extends StatelessWidget {
     required this.scrollController,
     required this.horizontalScrollController,
     required this.onScrollNotification,
+    this.query = '',
+    this.levelFilter = ScriptLogLevelFilter.all,
   });
 
   /// Log browser controller.
@@ -23,6 +25,12 @@ class LogCenterInfoView extends StatelessWidget {
   /// Scroll notification handler.
   final bool Function(ScrollNotification notification) onScrollNotification;
 
+  /// Local text filter.
+  final String query;
+
+  /// Local level filter.
+  final ScriptLogLevelFilter levelFilter;
+
   @override
   Widget build(BuildContext context) {
     return Obx(() {
@@ -35,17 +43,45 @@ class LogCenterInfoView extends StatelessWidget {
       if (controller.lines.isEmpty) {
         return _buildMessage(context, I18n.homeNoLog.tr);
       }
+      final visibleLines = _buildVisibleLines();
+      if (visibleLines.isEmpty) {
+        return _buildMessage(context, I18n.homeLogEmptyFiltered.tr);
+      }
       return Column(
         children: [
           if (controller.olderLoading.value)
             const LinearProgressIndicator(minHeight: 2),
-          Expanded(child: _buildList(context, controller.wrapLines.value)),
+          Expanded(
+            child: _buildList(
+              context,
+              controller.wrapLines.value,
+              visibleLines,
+            ),
+          ),
         ],
       );
     });
   }
 
-  Widget _buildList(BuildContext context, bool wrapLines) {
+  /// Returns the current window filtered by text and level.
+  List<ScriptLogLine> _buildVisibleLines() {
+    final visible = <ScriptLogLine>[];
+    for (final line in controller.lines) {
+      final display = parseScriptLogDisplayLine(line.text);
+      if (!scriptLogLineMatchesQuery(display, query) ||
+          !scriptLogLineMatchesLevel(display, levelFilter)) {
+        continue;
+      }
+      visible.add(line);
+    }
+    return visible;
+  }
+
+  Widget _buildList(
+    BuildContext context,
+    bool wrapLines,
+    List<ScriptLogLine> lines,
+  ) {
     return Scrollbar(
       controller: scrollController,
       interactive: true,
@@ -55,14 +91,18 @@ class LogCenterInfoView extends StatelessWidget {
       },
       child: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: ClipRect(child: _buildScrollableArea(context, wrapLines)),
+        child: ClipRect(child: _buildScrollableArea(context, wrapLines, lines)),
       ),
     );
   }
 
-  Widget _buildScrollableArea(BuildContext context, bool wrapLines) {
+  Widget _buildScrollableArea(
+    BuildContext context,
+    bool wrapLines,
+    List<ScriptLogLine> lines,
+  ) {
     if (wrapLines) {
-      return _buildVerticalList(context, wrapLines: true);
+      return _buildVerticalList(context, wrapLines: true, lines: lines);
     }
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -79,7 +119,11 @@ class LogCenterInfoView extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: SizedBox(
               width: width,
-              child: _buildVerticalList(context, wrapLines: false),
+              child: _buildVerticalList(
+                context,
+                wrapLines: false,
+                lines: lines,
+              ),
             ),
           ),
         );
@@ -87,20 +131,26 @@ class LogCenterInfoView extends StatelessWidget {
     );
   }
 
-  Widget _buildVerticalList(BuildContext context, {required bool wrapLines}) {
+  Widget _buildVerticalList(
+    BuildContext context, {
+    required bool wrapLines,
+    required List<ScriptLogLine> lines,
+  }) {
     final list = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onLongPress: () => _openCopyDialog(context),
+      onLongPress: () => _openCopyDialog(context, lines),
       child: NotificationListener<ScrollNotification>(
         onNotification: onScrollNotification,
         child: ListView.builder(
           key: ValueKey<String>('log-info-${controller.scriptName}'),
           controller: scrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          itemCount: controller.lines.length,
+          padding: const EdgeInsets.fromLTRB(14, 6, 8, 6),
+          itemCount: lines.length,
           itemBuilder: (context, index) {
+            final line = lines[index];
             return LogCenterLogText(
-              line: controller.lines[index].text,
+              key: ValueKey<String>(line.key),
+              line: line.text,
               maxLines: wrapLines ? null : 1,
               overflow: wrapLines ? TextOverflow.clip : TextOverflow.visible,
               softWrap: wrapLines,
@@ -129,11 +179,11 @@ class LogCenterInfoView extends StatelessWidget {
     );
   }
 
-  /// Opens the dedicated copy dialog with the current info log body.
-  void _openCopyDialog(BuildContext context) {
+  /// Opens the dedicated copy dialog with the current visible log body.
+  void _openCopyDialog(BuildContext context, List<ScriptLogLine> lines) {
     showLogCenterCopyDialog(
       context,
-      text: controller.infoLogText,
+      text: lines.map((line) => line.text).join('\n'),
       onCopy: controller.copyText,
     );
   }

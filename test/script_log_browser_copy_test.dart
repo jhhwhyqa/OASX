@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:oasx/api/sse_client.dart';
 import 'package:oasx/modules/home/widgets/log_center_panel.dart';
+import 'package:oasx/modules/home/widgets/log_line_presentation.dart';
 import 'package:oasx/modules/log/log_browser_models.dart';
 import 'package:oasx/modules/log/script_log_browser_controller.dart';
 
@@ -49,8 +50,9 @@ void main() {
         .toList();
   }
 
-  testWidgets('copyCurrentView copies info logs with preserved line breaks',
-      (tester) async {
+  testWidgets('copyCurrentView copies info logs with preserved line breaks', (
+    tester,
+  ) async {
     await pumpShell(tester, Container());
     final controller = ScriptLogBrowserController(scriptName: 'demo');
     controller.lines.addAll(const [
@@ -89,8 +91,9 @@ void main() {
     expect(calls.single.arguments['text'], 'line-1\n\nline-2');
   });
 
-  testWidgets('copyCurrentView copies prepared error logs with line breaks',
-      (tester) async {
+  testWidgets('copyCurrentView copies prepared error logs with line breaks', (
+    tester,
+  ) async {
     await pumpShell(tester, Container());
     final controller = ScriptLogBrowserController(scriptName: 'demo');
     controller.activeTab.value = ScriptLogBrowserTab.error;
@@ -186,23 +189,98 @@ void main() {
 
     expect(find.byType(SelectionArea), findsOneWidget);
   });
+
+  testWidgets('console log search and level filter narrow visible rows', (
+    tester,
+  ) async {
+    final controller = Get.put(
+      ScriptLogBrowserController(scriptName: 'demo'),
+      tag: 'demo',
+      permanent: true,
+    );
+    controller.lines.addAll(const [
+      ScriptLogLine(
+        fileName: 'demo.log',
+        lineNo: 1,
+        offset: 0,
+        byteLength: 64,
+        text: '2026-10-22 12:34:56.789 INFO console ready',
+        lineTruncated: false,
+      ),
+      ScriptLogLine(
+        fileName: 'demo.log',
+        lineNo: 2,
+        offset: 64,
+        byteLength: 62,
+        text: '2026-10-22 12:35:01.201 ERROR console failure',
+        lineTruncated: false,
+      ),
+    ]);
+    controller.streamClient = ApiSseClient(
+      url: Uri.parse('http://127.0.0.1'),
+      onEvent: (_) {},
+      onStateChanged: (_, __) {},
+    );
+
+    await pumpShell(
+      tester,
+      const LogCenterPanel(scriptName: 'demo', showTitle: true),
+    );
+    await tester.pumpAndSettle();
+
+    List<String> visibleLines() {
+      return tester
+          .widgetList<LogCenterLogText>(find.byType(LogCenterLogText))
+          .map((widget) => widget.line)
+          .toList(growable: false);
+    }
+
+    expect(visibleLines(), hasLength(2));
+    expect(
+      visibleLines().any((line) => line.contains('console ready')),
+      isTrue,
+    );
+    expect(
+      visibleLines().any((line) => line.contains('console failure')),
+      isTrue,
+    );
+
+    await tester.enterText(find.byType(TextField), 'failure');
+    await tester.pumpAndSettle();
+    expect(visibleLines(), hasLength(1));
+    expect(visibleLines().single, contains('console failure'));
+
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.filter_list_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.ancestor(
+        of: find.text('ERROR'),
+        matching: find.byType(CheckedPopupMenuItem<ScriptLogLevelFilter>),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(visibleLines(), hasLength(1));
+    expect(visibleLines().single, contains('console failure'));
+  });
 }
 
 class _TestTranslations extends Translations {
   @override
   Map<String, Map<String, String>> get keys => {
-        'zh_CN': {
-          'Tip': 'Tip',
-          'Copy success': 'Copy success',
-          'Cancel': '取消',
-          'Copy': '复制',
-          'home_log_info_tab': '信息',
-          'home_log_error_tab': '错误',
-          'home_log_auto_scroll': '自动滚动',
-          'home_log_wrap_lines': '自动换行',
-          'Clear Log': '清空日志',
-          'home_no_script_selected': '请先选择一个配置',
-          'home_no_log': '暂无日志',
-        },
-      };
+    'zh_CN': {
+      'Tip': 'Tip',
+      'Copy success': 'Copy success',
+      'Cancel': '取消',
+      'Copy': '复制',
+      'home_log_info_tab': '信息',
+      'home_log_error_tab': '错误',
+      'home_log_auto_scroll': '自动滚动',
+      'home_log_wrap_lines': '自动换行',
+      'Clear Log': '清空日志',
+      'home_no_script_selected': '请先选择一个配置',
+      'home_no_log': '暂无日志',
+    },
+  };
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oasx/api/api_client.dart';
+import 'package:oasx/config/theme.dart';
+import 'package:oasx/modules/home/widgets/home_pane_card.dart';
+import 'package:oasx/modules/home/widgets/log_line_presentation.dart';
 import 'package:oasx/modules/log/log_browser_models.dart';
 import 'package:oasx/modules/log/script_log_browser_controller.dart';
 import 'package:oasx/translation/i18n_content.dart';
@@ -23,7 +26,8 @@ part 'log_center_panel_scroll.dart';
 /// selectable surface and avoids competing with the selection gesture.
 Widget _wrapLogSelection(BuildContext context, Widget child) {
   final platform = Theme.of(context).platform;
-  final supportsDesktopSelection = platform == TargetPlatform.windows ||
+  final supportsDesktopSelection =
+      platform == TargetPlatform.windows ||
       platform == TargetPlatform.linux ||
       platform == TargetPlatform.macOS;
   if (!supportsDesktopSelection) {
@@ -35,10 +39,36 @@ Widget _wrapLogSelection(BuildContext context, Widget child) {
 /// Script log center backed by the `/logs` browser API.
 class LogCenterPanel extends StatefulWidget {
   /// Creates one script log center.
-  const LogCenterPanel({super.key, required this.scriptName});
+  const LogCenterPanel({
+    super.key,
+    required this.scriptName,
+    this.showTitle = false,
+    this.isMaximized = false,
+    this.onToggleMaximize,
+    this.headerStatus,
+    this.headerAction,
+  });
 
   /// Active script name.
   final String scriptName;
+
+  /// Whether the toolbar renders the console-specific module title.
+  final bool showTitle;
+
+  /// Console-only running-task status rendered in the toolbar header.
+  ///
+  /// Kept as a widget slot so the log panel stays independent from the
+  /// dashboard controller.
+  final Widget? headerStatus;
+
+  /// Console-only primary action rendered in the toolbar action group.
+  final Widget? headerAction;
+
+  /// Whether the panel currently fills the console workspace.
+  final bool isMaximized;
+
+  /// Toggles the console log maximization state.
+  final VoidCallback? onToggleMaximize;
 
   @override
   State<LogCenterPanel> createState() => _LogCenterPanelState();
@@ -50,12 +80,15 @@ class _LogCenterPanelState extends State<LogCenterPanel> {
   static const double _estimatedLineExtent = 22;
 
   final Object _viewportOwner = Object();
+  final TextEditingController _logSearchController = TextEditingController();
   ScriptLogBrowserController? _controller;
   ScrollController? _scrollController;
   ScrollController? _horizontalScrollController;
   ScrollController? _errorListScrollController;
   ScrollController? _errorDetailScrollController;
   ScrollController? _errorDetailHorizontalScrollController;
+  String _logQuery = '';
+  ScriptLogLevelFilter _levelFilter = ScriptLogLevelFilter.all;
   bool _suppressScrollHandling = false;
   int _bottomScrollToken = 0;
   int _scrollSuppressionToken = 0;
@@ -78,7 +111,58 @@ class _LogCenterPanelState extends State<LogCenterPanel> {
     }
     _saveLogCenterViewport(this);
     _releaseLogCenterController(this, suspend: true);
+    _resetLogFilters();
     _bindController(widget.scriptName);
+  }
+
+  bool get _hasLogFilter {
+    return _logQuery.isNotEmpty || _levelFilter != ScriptLogLevelFilter.all;
+  }
+
+  /// Clears the local search and level filter.
+  void _resetLogFilters() {
+    _logSearchController.clear();
+    _logQuery = '';
+    _levelFilter = ScriptLogLevelFilter.all;
+  }
+
+  /// Returns the currently visible info log rows after local filtering.
+  List<ScriptLogDisplayLine> _visibleInfoLines() {
+    final controller = _controller;
+    if (controller == null) {
+      return const [];
+    }
+    final visible = <ScriptLogDisplayLine>[];
+    for (final line in controller.lines) {
+      final display = parseScriptLogDisplayLine(line.text);
+      if (!scriptLogLineMatchesQuery(display, _logQuery) ||
+          !scriptLogLineMatchesLevel(display, _levelFilter)) {
+        continue;
+      }
+      visible.add(display);
+    }
+    return visible;
+  }
+
+  /// Returns the raw text copied by the toolbar for the current view.
+  String get _visibleInfoText {
+    return _visibleInfoLines().map((line) => line.raw).join('\n');
+  }
+
+  /// Copies the currently visible info logs or delegates the error view.
+  void _copyCurrentView() {
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+    if (controller.activeTab.value == ScriptLogBrowserTab.info) {
+      final text = _visibleInfoText;
+      if (text.isNotEmpty) {
+        controller.copyText(text);
+      }
+      return;
+    }
+    controller.copyCurrentView();
   }
 
   @override
@@ -91,6 +175,7 @@ class _LogCenterPanelState extends State<LogCenterPanel> {
   void dispose() {
     _saveLogCenterViewport(this);
     _releaseLogCenterController(this, suspend: true);
+    _logSearchController.dispose();
     _scrollController?.dispose();
     _horizontalScrollController?.dispose();
     _errorListScrollController?.dispose();
@@ -102,46 +187,92 @@ class _LogCenterPanelState extends State<LogCenterPanel> {
   @override
   Widget build(BuildContext context) {
     if (widget.scriptName.trim().isEmpty) {
-      return Card(child: Center(child: Text(I18n.homeNoScriptSelected.tr)));
+      return HomePaneCard(
+        padding: const EdgeInsets.all(12),
+        child: Center(child: Text(I18n.homeNoScriptSelected.tr)),
+      );
     }
     final controller = _controller;
     if (controller == null) {
-      return Card(child: Center(child: Text(I18n.homeNoLog.tr)));
-    }
-    return Card(
-      child: Padding(
+      return HomePaneCard(
         padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            LogCenterToolbar(
-              controller: controller,
-              onToggleLineWrap: () => _handleLogCenterLineWrapToggle(this),
+        child: Center(child: Text(I18n.homeNoLog.tr)),
+      );
+    }
+    return HomePaneCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LogCenterToolbar(
+            controller: controller,
+            onToggleLineWrap: () => _handleLogCenterLineWrapToggle(this),
+            title: widget.showTitle ? I18n.homeConsoleRunningLog.tr : null,
+            searchController: _logSearchController,
+            query: _logQuery,
+            onQueryChanged: _handleLogQueryChanged,
+            levelFilter: _levelFilter,
+            onLevelFilterChanged: _handleLevelFilterChanged,
+            onCopyCurrent: _copyCurrentView,
+            isMaximized: widget.isMaximized,
+            onToggleMaximize: widget.onToggleMaximize,
+            headerStatus: widget.headerStatus,
+            headerAction: widget.headerAction,
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: Obx(
+              () => controller.activeTab.value == ScriptLogBrowserTab.info
+                  ? LogCenterInfoView(
+                      controller: controller,
+                      scrollController: _scrollController!,
+                      horizontalScrollController: _horizontalScrollController!,
+                      onScrollNotification: _handleScrollNotification,
+                      query: _logQuery,
+                      levelFilter: _levelFilter,
+                    )
+                  : LogCenterErrorView(
+                      controller: controller,
+                      listScrollController: _errorListScrollController!,
+                      detailScrollController: _errorDetailScrollController!,
+                      detailHorizontalScrollController:
+                          _errorDetailHorizontalScrollController!,
+                    ),
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: Obx(
-                () => controller.activeTab.value == ScriptLogBrowserTab.info
-                    ? LogCenterInfoView(
-                        controller: controller,
-                        scrollController: _scrollController!,
-                        horizontalScrollController:
-                            _horizontalScrollController!,
-                        onScrollNotification: _handleScrollNotification,
-                      )
-                    : LogCenterErrorView(
-                        controller: controller,
-                        listScrollController: _errorListScrollController!,
-                        detailScrollController: _errorDetailScrollController!,
-                        detailHorizontalScrollController:
-                            _errorDetailHorizontalScrollController!,
-                      ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+  }
+
+  void _handleLogQueryChanged(String value) {
+    setState(() {
+      _logQuery = value.trim().toLowerCase();
+    });
+    _scrollInfoLogToTopAfterFrame();
+  }
+
+  void _handleLevelFilterChanged(ScriptLogLevelFilter value) {
+    if (_levelFilter == value) {
+      return;
+    }
+    setState(() {
+      _levelFilter = value;
+    });
+    _scrollInfoLogToTopAfterFrame();
+  }
+
+  /// Returns the filtered view to its first matching record.
+  void _scrollInfoLogToTopAfterFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final scrollController = _scrollController;
+      if (!mounted ||
+          scrollController == null ||
+          !scrollController.hasClients) {
+        return;
+      }
+      scrollController.jumpTo(0);
+    });
   }
 
   void _bindController(String scriptName) {
