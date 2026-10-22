@@ -17,8 +17,16 @@ Future<void> showTaskCatalogDialog(
   required Future<void> Function(String taskName) onOpenTask,
   required Future<void> Function(String taskName) onQuickRun,
   required Future<void> Function(String taskName) onQuickWait,
+  String? initialTaskName,
 }) async {
   controller.clearActiveTask();
+  final initialTask = initialTaskName?.trim() ?? '';
+  if (initialTask.isNotEmpty) {
+    controller.openTaskParameters(
+      initialTask,
+      source: HomeTaskParameterEntrySource.overview,
+    );
+  }
   final media = MediaQuery.sizeOf(context);
   final width = media.width.clamp(420.0, 980.0);
   final height = media.height.clamp(440.0, 760.0);

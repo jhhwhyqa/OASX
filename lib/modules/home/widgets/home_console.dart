@@ -191,18 +191,23 @@ class _HomeConsoleState extends State<HomeConsole> {
       onQuickRun: widget.onQuickRunTask,
       onQuickWait: widget.onQuickWaitTask,
       onEditTask: (taskName) =>
-          widget.onOpenTask(taskName, HomeTaskParameterEntrySource.overview),
+          _openTaskCatalog(context, script, initialTaskName: taskName),
       onBulkQuickRun: widget.onBulkQuickRun,
       onBulkQuickWait: widget.onBulkQuickWait,
       onOpenTaskCatalog: () => _openTaskCatalog(context, script),
     );
   }
 
-  Future<void> _openTaskCatalog(BuildContext context, ScriptModel script) {
+  Future<void> _openTaskCatalog(
+    BuildContext context,
+    ScriptModel script, {
+    String? initialTaskName,
+  }) {
     return showTaskCatalogDialog(
       context,
       controller: widget.controller,
       script: script,
+      initialTaskName: initialTaskName,
       onOpenTask: (taskName) =>
           widget.onOpenTask(taskName, HomeTaskParameterEntrySource.tasks),
       onQuickRun: widget.onQuickRunTask,
