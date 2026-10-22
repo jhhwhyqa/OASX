@@ -25,7 +25,7 @@ extension HomeDashboardStartupX on HomeDashboardController {
   Future<void> retryStartupConnection() async {
     await _runStartupConnectionCheck(
       enableAutoDeploy: false,
-      showFailureSnack: false,
+      showFailureSnack: true,
       triggerAutoRun: false,
     );
   }
@@ -63,6 +63,7 @@ extension HomeDashboardStartupX on HomeDashboardController {
     try {
       if (PlatformUtils.isWeb && !ApiClient().hasConfiguredBackendAddress) {
         isStartupConnectionFailed.value = true;
+        _notifyConnectionFailure(showFailureSnack);
         return;
       }
       startupLoadingMessage.value = I18n.homeLoadingAutoLogin;
@@ -73,17 +74,16 @@ extension HomeDashboardStartupX on HomeDashboardController {
         return;
       }
 
-      if (showFailureSnack) {
-        Get.snackbar(I18n.loginError.tr, I18n.loginErrorMsg.tr);
-      }
       if (!enableAutoDeploy || !Get.isRegistered<SettingsController>()) {
         isStartupConnectionFailed.value = true;
+        _notifyConnectionFailure(showFailureSnack);
         return;
       }
 
       final settings = Get.find<SettingsController>();
       if (!PlatformUtils.isDesktop || !settings.autoDeploy.value) {
         isStartupConnectionFailed.value = true;
+        _notifyConnectionFailure(showFailureSnack);
         return;
       }
 
@@ -95,6 +95,8 @@ extension HomeDashboardStartupX on HomeDashboardController {
       try {
         await serverController.run();
         await _waitUntilDeployFinished(serverController);
+      } catch (error) {
+        debugPrint('Auto deploy failed: $error');
       } finally {
         isStartupAutoDeploying.value = false;
       }
@@ -108,10 +110,27 @@ extension HomeDashboardStartupX on HomeDashboardController {
       }
 
       isStartupConnectionFailed.value = true;
+      _notifyConnectionFailure(showFailureSnack);
+    } catch (error) {
+      // Keep startup failures visible instead of leaving an unhandled future.
+      debugPrint('Startup connection check failed: $error');
+      isStartupConnectionFailed.value = true;
+      _notifyConnectionFailure(showFailureSnack);
     } finally {
       isStartupChecking.value = false;
       startupLoadingMessage.value = '';
     }
+  }
+
+  /// Shows the top connection prompt once the startup attempt has settled.
+  ///
+  /// Showing it before auto deploy meant the snackbar expired while the deploy
+  /// overlay was still running, so the failure looked silent.
+  void _notifyConnectionFailure(bool enabled) {
+    if (!enabled) {
+      return;
+    }
+    Get.snackbar(I18n.loginError.tr, I18n.loginErrorMsg.tr);
   }
 
   Future<void> _refreshScriptsAfterConnected({
