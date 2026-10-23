@@ -7,6 +7,17 @@ import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/models/script_statistics_models.dart';
 import 'package:oasx/utils/platform_utils.dart';
 
+/// Backoff used when the statistics bootstrap fails right after a deploy.
+///
+/// The backend and the script may still be starting, so binding is retried a
+/// few times instead of leaving the pane empty until the user refreshes.
+const List<Duration> _statisticsBindingRetryDelays = [
+  Duration(seconds: 2),
+  Duration(seconds: 4),
+  Duration(seconds: 8),
+  Duration(seconds: 12),
+];
+
 /// Drives statistics state for the active script workbench.
 class HomeStatisticsController extends GetxController {
   /// Dashboard controller used to resolve the active script and tab.
@@ -91,6 +102,12 @@ class HomeStatisticsController extends GetxController {
   /// Sequential queue that preserves SSE event ordering during async parsing.
   Future<void> _streamEventQueue = Future<void>.value();
 
+  /// Pending retry timer for a failed statistics bootstrap.
+  Timer? _bindingRetryTimer;
+
+  /// Number of consecutive failed statistics bootstraps.
+  int _bindingRetryAttempt = 0;
+
   @override
   void onInit() {
     _dashboardWorker = everAll(
@@ -118,6 +135,7 @@ class HomeStatisticsController extends GetxController {
     _dashboardWorker = null;
     _backendReadyWorker?.dispose();
     _backendReadyWorker = null;
+    _cancelBindingRetry();
     unawaited(_stopStream());
     super.onClose();
   }
@@ -204,6 +222,8 @@ class HomeStatisticsController extends GetxController {
 
   /// Rebinds the statistics transport to the currently visible script context.
   Future<void> syncStatisticsBinding({bool force = false}) async {
+    _cancelBindingRetry();
+    _bindingRetryAttempt = 0;
     final scriptName = dashboardController.activeScriptName.value.trim();
     if (!dashboardController.isStatsVisibleInCurrentLayout ||
         scriptName.isEmpty) {
@@ -289,8 +309,12 @@ class HomeStatisticsController extends GetxController {
       if (availableDateKeys.isEmpty) {
         selectedDateKey.value = '';
         statistics.value = null;
+        // The backend may not have published any dates yet while the script
+        // is still starting after a deploy.
+        _scheduleBindingRetry();
         return;
       }
+      _bindingRetryAttempt = 0;
       selectedDateKey.value = availableDateKeys.first;
       await _loadSelectedDate(scriptName, selectedDateKey.value);
     } catch (error) {
@@ -302,6 +326,7 @@ class HomeStatisticsController extends GetxController {
       selectedDateKey.value = '';
       statistics.value = null;
       lastErrorMessage.value = error.toString();
+      _scheduleBindingRetry();
     }
   }
 
@@ -382,6 +407,8 @@ class HomeStatisticsController extends GetxController {
 
   /// Resets state when the tab is hidden or script becomes unavailable.
   Future<void> _resetBindingState({required bool clearSelection}) async {
+    _cancelBindingRetry();
+    _bindingRetryAttempt = 0;
     _bindingRevision++;
     _statsRevision++;
     _boundScriptName = '';
@@ -574,6 +601,35 @@ class HomeStatisticsController extends GetxController {
         dashboardController.isStatsVisibleInCurrentLayout &&
         _boundScriptName == scriptName &&
         selectedDateKey.value == dateKey;
+  }
+
+  /// Retries a failed bootstrap while the statistics pane stays visible.
+  void _scheduleBindingRetry() {
+    if (isClosed || _boundScriptName.isEmpty) {
+      return;
+    }
+    if (_bindingRetryAttempt >= _statisticsBindingRetryDelays.length) {
+      return;
+    }
+    final delay = _statisticsBindingRetryDelays[_bindingRetryAttempt++];
+    _cancelBindingRetry();
+    _bindingRetryTimer = Timer(delay, () {
+      _bindingRetryTimer = null;
+      if (isClosed ||
+          _boundScriptName.isEmpty ||
+          !dashboardController.isStatsVisibleInCurrentLayout ||
+          dashboardController.activeScriptName.value.trim() !=
+              _boundScriptName) {
+        return;
+      }
+      unawaited(_bootstrapForScript(_boundScriptName));
+    });
+  }
+
+  /// Cancels a pending bootstrap retry.
+  void _cancelBindingRetry() {
+    _bindingRetryTimer?.cancel();
+    _bindingRetryTimer = null;
   }
 
   /// Compares tasks by their latest run start time.

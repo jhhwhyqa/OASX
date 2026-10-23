@@ -175,6 +175,12 @@ class ScriptLogBrowserController extends GetxController {
   /// Whether a bottom sync has already been queued for this frame.
   bool _bottomSyncQueued = false;
 
+  /// Pending retry timer for a failed latest-window load.
+  Timer? _infoRetryTimer;
+
+  /// Number of consecutive failed latest-window loads.
+  int _infoRetryAttempt = 0;
+
   /// Whether info view should reload the latest window when re-entered.
   bool _shouldRefreshLatestOnInfoResume = false;
 
@@ -191,6 +197,7 @@ class ScriptLogBrowserController extends GetxController {
     preserveViewportAfterPrepend = null;
     resetErrorDetailViewport = null;
     stopErrorListAutoRefresh();
+    _cancelInfoRetry();
     unawaited(stopStream());
     super.onClose();
   }

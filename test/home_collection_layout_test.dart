@@ -399,6 +399,63 @@ void main() {
     expect(actionButton().tooltip, 'Stopped');
   });
 
+  testWidgets('console log toggles update without an external rebuild', (
+    tester,
+  ) async {
+    await pumpConsole(tester, width: 1280, theme: lightTheme);
+    final logController = Get.find<ScriptLogBrowserController>(tag: 'alpha');
+
+    // Wrap toggle: the icon lives inside a LayoutBuilder, so it must observe
+    // the controller through its own Obx instead of the outer toolbar one.
+    expect(logController.wrapLines.value, isTrue);
+    expect(
+      find.descendant(
+        of: find.byType(LogCenterPanel),
+        matching: find.byIcon(Icons.wrap_text),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Wrap lines'));
+    await tester.pump();
+    expect(logController.wrapLines.value, isFalse);
+    expect(
+      find.descendant(
+        of: find.byType(LogCenterPanel),
+        matching: find.byIcon(Icons.short_text),
+      ),
+      findsOneWidget,
+    );
+
+    // Auto-scroll toggle uses the same reactive path.
+    logController.autoScroll.value = true;
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.byType(LogCenterPanel),
+        matching: find.byIcon(Icons.flash_on_rounded),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Auto-scroll'));
+    await tester.pump();
+    expect(logController.autoScroll.value, isFalse);
+    expect(
+      find.descendant(
+        of: find.byType(LogCenterPanel),
+        matching: find.byIcon(Icons.flash_off_rounded),
+      ),
+      findsOneWidget,
+    );
+
+    // The stream status dot must follow the live connection state.
+    logController.streamStatus.value = ScriptLogStreamStatus.connected;
+    await tester.pump();
+    expect(find.byTooltip('Live log connected'), findsOneWidget);
+    logController.streamStatus.value = ScriptLogStreamStatus.error;
+    await tester.pump();
+    expect(find.byTooltip('Live log disconnected'), findsOneWidget);
+  });
+
   testWidgets('desktop console maximizes and restores the log column', (
     tester,
   ) async {

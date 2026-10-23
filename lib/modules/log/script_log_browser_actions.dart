@@ -125,6 +125,8 @@ extension ScriptLogBrowserActionsX on ScriptLogBrowserController {
   /// Disconnects live transport while keeping visible session state.
   Future<void> suspend() async {
     revision++;
+    _cancelInfoRetry();
+    _infoRetryAttempt = 0;
     stopErrorListAutoRefresh();
     completePendingLoads();
     cancelSelectedErrorRenderWork();

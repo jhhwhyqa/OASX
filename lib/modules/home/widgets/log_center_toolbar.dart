@@ -163,9 +163,14 @@ class LogCenterToolbar extends StatelessWidget {
                 child: status ?? const SizedBox.shrink(),
               ),
             ),
-            if (isInfo) ...[const SizedBox(width: 8), _streamStatus(context)],
+            if (isInfo) ...[
+              const SizedBox(width: 8),
+              // LayoutBuilder runs during layout, after GetX's Obx tracking has
+              // stopped, so reactive reads must happen inside their own Obx.
+              Obx(() => _streamStatus(context)),
+            ],
             if (action != null) ...[const SizedBox(width: 6), action],
-            _trailingControls(context),
+            Obx(() => _trailingControls(context)),
           ],
         );
       },

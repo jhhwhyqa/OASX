@@ -1,8 +1,26 @@
 part of 'script_log_browser_controller.dart';
 
+/// Backoff used when the first latest-window request fails after mounting.
+///
+/// The backend can still be starting up after an auto deploy, so a single
+/// failure should not require the user to refresh the panel manually.
+const List<Duration> _infoLoadRetryDelays = [
+  Duration(seconds: 1),
+  Duration(seconds: 2),
+  Duration(seconds: 4),
+  Duration(seconds: 8),
+];
+
 extension ScriptLogBrowserInfoX on ScriptLogBrowserController {
   /// Loads latest log window and starts live stream.
   Future<void> refreshLatest() async {
+    _cancelInfoRetry();
+    _infoRetryAttempt = 0;
+    await _refreshLatestAttempt();
+  }
+
+  /// Runs one latest-window load attempt.
+  Future<void> _refreshLatestAttempt() async {
     final requestId = ++revision;
     _infoLoadRequestId = requestId;
     infoLoading.value = true;
@@ -20,6 +38,7 @@ extension ScriptLogBrowserInfoX on ScriptLogBrowserController {
       _shouldRefreshLatestOnInfoResume = false;
       syncWindowLimitForMode();
       infoLoading.value = false;
+      _infoRetryAttempt = 0;
       unawaited(startStream(requestId));
       syncBottomAfterFrame();
     } catch (error) {
@@ -29,11 +48,37 @@ extension ScriptLogBrowserInfoX on ScriptLogBrowserController {
       infoLoading.value = false;
       infoError.value = error.toString();
       streamStatus.value = ScriptLogStreamStatus.error;
+      _scheduleInfoRetry();
     } finally {
       if (_infoLoadRequestId == requestId) {
         _infoLoadRequestId = 0;
       }
     }
+  }
+
+  /// Retries a failed latest-window load while the panel stays mounted.
+  void _scheduleInfoRetry() {
+    if (isClosed || viewportOwner == null) {
+      return;
+    }
+    if (_infoRetryAttempt >= _infoLoadRetryDelays.length) {
+      return;
+    }
+    final delay = _infoLoadRetryDelays[_infoRetryAttempt++];
+    _cancelInfoRetry();
+    _infoRetryTimer = Timer(delay, () {
+      _infoRetryTimer = null;
+      if (isClosed || viewportOwner == null || lines.isNotEmpty) {
+        return;
+      }
+      unawaited(_refreshLatestAttempt());
+    });
+  }
+
+  /// Cancels a pending latest-window retry.
+  void _cancelInfoRetry() {
+    _infoRetryTimer?.cancel();
+    _infoRetryTimer = null;
   }
 
   /// Loads older lines before the current first line.
