@@ -472,6 +472,7 @@ void main() {
     expect(controller.isConsoleStatsVisible.value, isTrue);
     expect(find.byType(ConsoleStatsRail), findsNothing);
     expect(find.byType(ConsoleStatsPane), findsOneWidget);
+    expect(find.text('Refresh stats'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Collapse stats'));
     await tester.pumpAndSettle();

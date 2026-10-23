@@ -180,7 +180,9 @@ class I18n {
       homeParamsTab = 'home_params_tab';
   static const String homeStatsTab = 'home_stats_tab',
       homeStatsGeneratedAt = 'home_stats_generated_at',
-      homeStatsRetentionDays = 'home_stats_retention_days';
+      homeStatsRetentionDays = 'home_stats_retention_days',
+      homeStatsRefresh = 'home_stats_refresh',
+      homeStatsUpdatedAt = 'home_stats_updated_at';
   static const String homeStatsToday = 'home_stats_today',
       homeStatsSelectedDate = 'home_stats_selected_date',
       homeStatsTasks = 'home_stats_tasks',

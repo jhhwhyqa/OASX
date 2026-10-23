@@ -217,6 +217,8 @@ final Map<String, String> _cn_ui = {
   I18n.homeParamsTab: '参数',
   I18n.homeStatsGeneratedAt: '生成时间',
   I18n.homeStatsRetentionDays: '保留天数',
+  I18n.homeStatsRefresh: '刷新统计',
+  I18n.homeStatsUpdatedAt: '更新于',
   I18n.homeStatsToday: '今天',
   I18n.homeStatsSelectedDate: '当前日期',
   I18n.homeStatsTasks: '任务数',

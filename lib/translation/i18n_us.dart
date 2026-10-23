@@ -153,6 +153,8 @@ final Map<String, String> _us_ui = {
   I18n.homeParamsTab: 'Params',
   I18n.homeStatsGeneratedAt: 'Generated at',
   I18n.homeStatsRetentionDays: 'Retention days',
+  I18n.homeStatsRefresh: 'Refresh stats',
+  I18n.homeStatsUpdatedAt: 'Updated',
   I18n.homeStatsToday: 'Today',
   I18n.homeStatsSelectedDate: 'Selected date',
   I18n.homeStatsTasks: 'Tasks',

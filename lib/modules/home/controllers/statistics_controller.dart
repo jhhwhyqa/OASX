@@ -18,6 +18,17 @@ const List<Duration> _statisticsBindingRetryDelays = [
   Duration(seconds: 12),
 ];
 
+/// Number of day snapshots retained for instant re-rendering.
+const int _statisticsSnapshotCacheLimit = 24;
+
+/// One cached day snapshot and the time it was fetched.
+class _CachedStatisticsSnapshot {
+  const _CachedStatisticsSnapshot(this.day, this.updatedAt);
+
+  final ScriptStatisticsDay day;
+  final DateTime updatedAt;
+}
+
 /// Drives statistics state for the active script workbench.
 class HomeStatisticsController extends GetxController {
   /// Dashboard controller used to resolve the active script and tab.
@@ -41,6 +52,12 @@ class HomeStatisticsController extends GetxController {
 
   /// Selected-date statistics currently rendered by the page.
   final statistics = Rxn<ScriptStatisticsDay>();
+
+  /// Time of the last successfully applied snapshot or incremental update.
+  final lastUpdatedAt = Rxn<DateTime>();
+
+  /// Cached day snapshots keyed by script and date for instant re-rendering.
+  final Map<String, _CachedStatisticsSnapshot> _snapshotCache = {};
 
   /// Date currently selected in the header control.
   final selectedDateKey = ''.obs;
@@ -331,7 +348,24 @@ class HomeStatisticsController extends GetxController {
     }
   }
 
-  /// Loads the currently selected date using either SSE or one-shot HTTP.
+  /// Reloads the visible date without leaving the current view.
+  Future<void> refreshStatistics() async {
+    final scriptName = _boundScriptName;
+    if (scriptName.isEmpty) {
+      return;
+    }
+    final dateKey = selectedDateKey.value;
+    if (dateKey.isEmpty) {
+      await _bootstrapForScript(scriptName);
+      return;
+    }
+    await _loadSelectedDate(scriptName, dateKey);
+  }
+
+  /// Loads the selected date from an HTTP snapshot, then streams live updates.
+  ///
+  /// The snapshot always comes from the one-shot endpoint so the panel can
+  /// paint without waiting for the SSE connection to emit its first event.
   Future<void> _loadSelectedDate(String scriptName, String dateKey) async {
     if (_boundScriptName != scriptName ||
         !availableDateKeys.contains(dateKey)) {
@@ -343,12 +377,15 @@ class HomeStatisticsController extends GetxController {
     await _stopStream();
     _resetSelectedDateState();
     lastErrorMessage.value = '';
-    if (shouldUseLiveStream) {
-      statisticsLoading.value = false;
-      await _startTodayStream(scriptName, dateKey, statsRevision);
-      return;
+
+    // Paint the previous snapshot immediately while the refresh runs.
+    final cached = _snapshotCache[_snapshotCacheKey(scriptName, dateKey)];
+    if (cached != null) {
+      statistics.value = cached.day;
+      lastUpdatedAt.value = cached.updatedAt;
+      _syncSelections();
     }
-    connectionState.value = ScriptStatisticsConnectionState.idle;
+
     statisticsLoading.value = true;
     try {
       final day = await ApiClient().getScriptStatisticsDay(scriptName, dateKey);
@@ -356,24 +393,63 @@ class HomeStatisticsController extends GetxController {
         return;
       }
       statisticsLoading.value = false;
-      statistics.value = day;
-      connectionState.value =
-          isStatisticsDateToday(dateKey) && PlatformUtils.isWeb
+      _applyStatisticsSnapshot(scriptName, dateKey, day);
+      connectionState.value = shouldUseLiveStream
+          ? ScriptStatisticsConnectionState.connecting
+          : isStatisticsDateToday(dateKey) && PlatformUtils.isWeb
           ? ScriptStatisticsConnectionState.connected
           : ScriptStatisticsConnectionState.idle;
-      _syncSelections();
     } catch (error) {
       if (!_isStatsRequestActive(statsRevision, scriptName, dateKey)) {
         return;
       }
       statisticsLoading.value = false;
-      statistics.value = null;
+      if (cached == null) {
+        statistics.value = null;
+      }
       connectionState.value =
           isStatisticsDateToday(dateKey) && PlatformUtils.isWeb
           ? ScriptStatisticsConnectionState.error
           : ScriptStatisticsConnectionState.idle;
       lastErrorMessage.value = error.toString();
     }
+
+    if (shouldUseLiveStream) {
+      await _startTodayStream(scriptName, dateKey, statsRevision);
+    }
+  }
+
+  /// Applies a complete snapshot and keeps it for instant re-rendering.
+  void _applyStatisticsSnapshot(
+    String scriptName,
+    String dateKey,
+    ScriptStatisticsDay day,
+  ) {
+    statistics.value = day;
+    _cacheStatisticsSnapshot(scriptName, dateKey, day);
+    _clearDerivedCaches();
+    _syncSelections();
+  }
+
+  /// Stores one snapshot and refreshes the visible update timestamp.
+  void _cacheStatisticsSnapshot(
+    String scriptName,
+    String dateKey,
+    ScriptStatisticsDay day,
+  ) {
+    final now = DateTime.now();
+    final key = _snapshotCacheKey(scriptName, dateKey);
+    _snapshotCache.remove(key);
+    _snapshotCache[key] = _CachedStatisticsSnapshot(day, now);
+    lastUpdatedAt.value = now;
+    while (_snapshotCache.length > _statisticsSnapshotCacheLimit) {
+      _snapshotCache.remove(_snapshotCache.keys.first);
+    }
+  }
+
+  /// Builds the cache key for one script/day pair.
+  String _snapshotCacheKey(String scriptName, String dateKey) {
+    return '$scriptName\u0000$dateKey';
   }
 
   /// Starts the live SSE stream for today.
@@ -420,6 +496,7 @@ class HomeStatisticsController extends GetxController {
     lastErrorMessage.value = '';
     availableDateKeys.clear();
     statistics.value = null;
+    lastUpdatedAt.value = null;
     latestUpdatedTaskName.value = '';
     latestUpdatedTaskPulse.value = 0;
     historySortField.value = ScriptStatisticsChartSortField.data;
@@ -436,6 +513,7 @@ class HomeStatisticsController extends GetxController {
   void _resetDerivedState() {
     availableDateKeys.clear();
     statistics.value = null;
+    lastUpdatedAt.value = null;
     selectedDateKey.value = '';
     selectedTaskName.value = '';
     latestUpdatedTaskName.value = '';
@@ -449,6 +527,7 @@ class HomeStatisticsController extends GetxController {
   /// Resets selected-date data before a reload starts.
   void _resetSelectedDateState() {
     statistics.value = null;
+    lastUpdatedAt.value = null;
     selectedTaskName.value = '';
     latestUpdatedTaskName.value = '';
     latestUpdatedTaskPulse.value = 0;
@@ -506,10 +585,8 @@ class HomeStatisticsController extends GetxController {
           if (_streamService != streamService || _streamDateKey != dateKey) {
             return;
           }
-          statistics.value = day;
+          _applyStatisticsSnapshot(_streamScriptName, dateKey, day);
           latestUpdatedTaskName.value = '';
-          _clearDerivedCaches();
-          _syncSelections();
           break;
         case 'update':
           final update = await parseScriptStatisticsUpdatePayloadAsync(
@@ -523,7 +600,9 @@ class HomeStatisticsController extends GetxController {
               currentStatistics.dateKey != dateKey) {
             return;
           }
-          statistics.value = currentStatistics.applyUpdate(update);
+          final updated = currentStatistics.applyUpdate(update);
+          statistics.value = updated;
+          _cacheStatisticsSnapshot(_streamScriptName, dateKey, updated);
           _markUpdatedTask(update.changedTasks);
           _clearDerivedCaches();
           _syncSelections();

@@ -42,6 +42,7 @@ class ScriptStatisticsPanel extends StatelessWidget {
           label: _placeholderLabel(),
           message: controller.lastErrorMessage.value,
           loading: _placeholderIsLoading(),
+          onRetry: controller.refreshStatistics,
         );
       }
       final entries = controller.historyTaskEntries;
@@ -221,33 +222,66 @@ class _HeaderFiltersRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.end,
-      spacing: _kStatisticsSummarySpacing,
-      runSpacing: _kStatisticsSummarySpacing,
-      children: [
-        _MetricDropdown(
-          value: controller.historyMetric.value,
-          onChanged: (metric) {
-            controller.selectHistoryMetric(metric);
-          },
-        ),
-        _SortFieldDropdown(
-          value: controller.historySortField.value,
-          allowTime: canSortByTime,
-          onChanged: controller.selectHistorySortField,
-        ),
-        IconButton(
-          onPressed: controller.toggleHistorySortDirection,
-          icon: Icon(
-            controller.historySortDescending.value
-                ? Icons.arrow_downward_rounded
-                : Icons.arrow_upward_rounded,
+    final scheme = Theme.of(context).colorScheme;
+    return Obx(() {
+      final updatedAt = controller.lastUpdatedAt.value;
+      final loading = controller.statisticsLoading.value;
+      return Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: _kStatisticsSummarySpacing,
+        runSpacing: _kStatisticsSummarySpacing,
+        children: [
+          if (updatedAt != null)
+            Text(
+              '${I18n.homeStatsUpdatedAt.tr} ${_formatUpdatedAt(updatedAt)}',
+              maxLines: 1,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          _MetricDropdown(
+            value: controller.historyMetric.value,
+            onChanged: (metric) {
+              controller.selectHistoryMetric(metric);
+            },
           ),
-        ),
-      ],
-    );
+          _SortFieldDropdown(
+            value: controller.historySortField.value,
+            allowTime: canSortByTime,
+            onChanged: controller.selectHistorySortField,
+          ),
+          IconButton(
+            tooltip: I18n.homeStatsRefresh.tr,
+            visualDensity: VisualDensity.compact,
+            onPressed: loading ? null : controller.refreshStatistics,
+            icon: loading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded, size: 18),
+          ),
+          IconButton(
+            onPressed: controller.toggleHistorySortDirection,
+            icon: Icon(
+              controller.historySortDescending.value
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
+            ),
+          ),
+        ],
+      );
+    });
   }
+}
+
+/// Formats the snapshot timestamp shown next to the refresh action.
+String _formatUpdatedAt(DateTime value) {
+  String twoDigits(int n) => n.toString().padLeft(2, '0');
+  return '${twoDigits(value.hour)}:${twoDigits(value.minute)}:'
+      '${twoDigits(value.second)}';
 }
 
 class _StatusIcon extends StatelessWidget {
@@ -257,21 +291,23 @@ class _StatusIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: _statusLabel(),
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: _statusTone(context).withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: _statusTone(context).withValues(alpha: 0.3),
+    return Obx(() {
+      return Tooltip(
+        message: _statusLabel(),
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: _statusTone(context).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: _statusTone(context).withValues(alpha: 0.3),
+            ),
           ),
+          child: Icon(_statusIcon(), size: 18, color: _statusTone(context)),
         ),
-        child: Icon(_statusIcon(), size: 18, color: _statusTone(context)),
-      ),
-    );
+      );
+    });
   }
 
   String _statusLabel() {
@@ -644,11 +680,13 @@ class _StatisticsPlaceholder extends StatelessWidget {
     required this.label,
     this.message = '',
     this.loading = false,
+    this.onRetry,
   });
 
   final String label;
   final String message;
   final bool loading;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -677,6 +715,14 @@ class _StatisticsPlaceholder extends StatelessWidget {
                 message,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+            if (!loading && onRetry != null) ...[
+              const SizedBox(height: 14),
+              OutlinedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(I18n.homeStatsRefresh.tr),
               ),
             ],
           ],
