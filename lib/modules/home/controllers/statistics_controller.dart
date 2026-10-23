@@ -125,8 +125,12 @@ class HomeStatisticsController extends GetxController {
   /// Number of consecutive failed statistics bootstraps.
   int _bindingRetryAttempt = 0;
 
+  /// Whether the statistics pane was visible on the previous worker tick.
+  bool _wasStatsVisible = false;
+
   @override
   void onInit() {
+    _wasStatsVisible = dashboardController.isStatsVisibleInCurrentLayout;
     _dashboardWorker = everAll(
       [
         dashboardController.activeScriptName,
@@ -137,7 +141,13 @@ class HomeStatisticsController extends GetxController {
         dashboardController.isConsoleLayoutActive,
       ],
       (_) {
-        unawaited(syncStatisticsBinding());
+        final visible = dashboardController.isStatsVisibleInCurrentLayout;
+        final becameVisible = visible && !_wasStatsVisible;
+        _wasStatsVisible = visible;
+        // Rebuild dates and the snapshot whenever the pane opens again. After
+        // an auto deploy this is the first moment the console is usable, and a
+        // plain reload could keep using a stale binding.
+        unawaited(syncStatisticsBinding(force: becameVisible));
       },
     );
     _backendReadyWorker = ever(dashboardController.backendReadyRevision, (_) {
@@ -348,18 +358,12 @@ class HomeStatisticsController extends GetxController {
     }
   }
 
-  /// Reloads the visible date without leaving the current view.
+  /// Rebuilds the date list and visible snapshot from the backend.
+  ///
+  /// This mirrors the full rebind performed by the startup refresh so a manual
+  /// refresh can never leave a stale date or binding behind.
   Future<void> refreshStatistics() async {
-    final scriptName = _boundScriptName;
-    if (scriptName.isEmpty) {
-      return;
-    }
-    final dateKey = selectedDateKey.value;
-    if (dateKey.isEmpty) {
-      await _bootstrapForScript(scriptName);
-      return;
-    }
-    await _loadSelectedDate(scriptName, dateKey);
+    await syncStatisticsBinding(force: true);
   }
 
   /// Loads the selected date from an HTTP snapshot, then streams live updates.

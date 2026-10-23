@@ -50,12 +50,13 @@ class _TestScriptService extends ScriptService {
 
 /// Keeps the console stats pane renderable without backend statistics calls.
 class _TestStatisticsController extends HomeStatisticsController {
-  @override
-  // ignore: must_call_super
-  void onInit() {}
+  /// Records each binding request so tests can assert the force flag.
+  final syncRequests = <bool>[];
 
   @override
-  Future<void> syncStatisticsBinding({bool force = false}) async {}
+  Future<void> syncStatisticsBinding({bool force = false}) async {
+    syncRequests.add(force);
+  }
 }
 
 String _testNextRun(int dayOffset) {
@@ -467,18 +468,26 @@ void main() {
     expect(find.byType(ConsoleStatsRail), findsOneWidget);
     expect(find.byType(ConsoleStatsPane), findsNothing);
 
+    final statsController =
+        Get.find<HomeStatisticsController>() as _TestStatisticsController;
+    statsController.syncRequests.clear();
+
     await tester.tap(find.byTooltip('Stats'));
     await tester.pumpAndSettle();
     expect(controller.isConsoleStatsVisible.value, isTrue);
     expect(find.byType(ConsoleStatsRail), findsNothing);
     expect(find.byType(ConsoleStatsPane), findsOneWidget);
     expect(find.text('Refresh stats'), findsOneWidget);
+    // Opening the pane must rebuild the date list, not reuse the old binding.
+    expect(statsController.syncRequests, contains(true));
 
+    statsController.syncRequests.clear();
     await tester.tap(find.byTooltip('Collapse stats'));
     await tester.pumpAndSettle();
     expect(controller.isConsoleStatsVisible.value, isFalse);
     expect(find.byType(ConsoleStatsRail), findsOneWidget);
     expect(find.byType(ConsoleStatsPane), findsNothing);
+    expect(statsController.syncRequests, contains(false));
   });
 
   testWidgets('desktop console maximizes and restores the log column', (

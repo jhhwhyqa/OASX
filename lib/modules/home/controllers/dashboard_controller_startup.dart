@@ -155,7 +155,23 @@ extension HomeDashboardStartupX on HomeDashboardController {
     if (!triggerAutoRun) {
       return;
     }
-    unawaited(_scriptService.autoRunScript());
+    unawaited(_runAutoRunAndNotify());
+  }
+
+  /// Runs the configured scripts, then rebinds transports once they are live.
+  ///
+  /// Auto deploy used to notify bindings before the scripts had actually
+  /// started, so the first statistics view still needed a manual refresh.
+  Future<void> _runAutoRunAndNotify() async {
+    try {
+      await _scriptService.autoRunScript();
+    } catch (error) {
+      debugPrint('Auto run failed: $error');
+    } finally {
+      if (!isClosed) {
+        _notifyBackendReady();
+      }
+    }
   }
 
   /// Lets bindings that failed during auto deploy retry now that login works.
