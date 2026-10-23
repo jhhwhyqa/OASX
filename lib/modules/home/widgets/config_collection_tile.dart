@@ -44,9 +44,6 @@ class ConfigCollectionTile extends StatelessWidget {
           final isActive = controller.activeScriptName.value == script.name;
           final showLinkCheckbox = controller.isLinkModeEnabled.value;
           final isLinked = controller.isScriptLinked(script.name);
-          final isDragCopyLoading = controller.isDragCopyPendingFor(
-            script.name,
-          );
           final state = controller.scriptCollectionStateFor(script);
           final compactThreshold =
               ConfigCollectionTile._compactLayoutThreshold +
@@ -72,7 +69,7 @@ class ConfigCollectionTile extends StatelessWidget {
               ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
-                onTap: isDragCopyLoading ? null : onTap,
+                onTap: onTap,
                 hoverColor: scheme.onSurface.withValues(alpha: 0.04),
                 focusColor: scheme.primary.withValues(alpha: 0.08),
                 child: Padding(
@@ -111,33 +108,22 @@ class ConfigCollectionTile extends StatelessWidget {
                         const SizedBox(width: 2),
                       ],
                       Expanded(
-                        child: Stack(
-                          children: [
-                            AbsorbPointer(
-                              absorbing: isDragCopyLoading,
-                              child: _ScriptMeta(
-                                script: script,
-                                state: state,
-                                isActive: isActive,
-                                compact: isCompact,
-                                powerButton: _PowerButton(
-                                  isRunning:
-                                      script.state.value == ScriptState.running,
-                                  stateColor: state.color(context),
-                                  onTogglePower: onTogglePower,
-                                ),
-                                popupButton: _ActionMenuButton(
-                                  onRename: onRename,
-                                  onExport: onExport,
-                                  onDelete: onDelete,
-                                ),
-                              ),
-                            ),
-                            if (isDragCopyLoading)
-                              const Positioned.fill(
-                                child: _DragCopyLoadingMask(),
-                              ),
-                          ],
+                        child: _ScriptMeta(
+                          script: script,
+                          state: state,
+                          isActive: isActive,
+                          compact: isCompact,
+                          powerButton: _PowerButton(
+                            isRunning:
+                                script.state.value == ScriptState.running,
+                            stateColor: state.color(context),
+                            onTogglePower: onTogglePower,
+                          ),
+                          popupButton: _ActionMenuButton(
+                            onRename: onRename,
+                            onExport: onExport,
+                            onDelete: onDelete,
+                          ),
                         ),
                       ),
                     ],
@@ -245,29 +231,6 @@ class _ScriptMeta extends StatelessWidget {
           powerButton,
           popupButton,
         ],
-      ),
-    );
-  }
-}
-
-class _DragCopyLoadingMask extends StatelessWidget {
-  const _DragCopyLoadingMask();
-
-  @override
-  Widget build(BuildContext context) {
-    return AbsorbPointer(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.68),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2.5),
-          ),
-        ),
       ),
     );
   }

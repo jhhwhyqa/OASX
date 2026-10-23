@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 
+import 'package:oasx/config/design_system.dart';
 import 'package:oasx/modules/common/widgets/appbar.dart';
+import 'package:oasx/modules/common/widgets/oasx_backdrop.dart';
+import 'package:oasx/modules/common/widgets/oasx_panel.dart';
 import 'package:oasx/modules/settings/oas_card.dart';
 import 'package:oasx/modules/settings/settings_leave_handler.dart';
 import 'package:oasx/modules/settings/system_card.dart';
@@ -25,9 +28,9 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  static const double _layoutSpacing = 8.0;
-  static const double _wideLayoutBreakpoint = 960.0;
-  static const double _navWidth = 220.0;
+  static const double _layoutSpacing = 12.0;
+  static const double _wideLayoutBreakpoint = 1000.0;
+  static const double _navWidth = 228.0;
   static const double _topAlignmentTolerance = 12.0;
 
   final ScrollController _scrollController = ScrollController();
@@ -36,16 +39,19 @@ class _SettingsViewState extends State<SettingsView> {
     _SettingsSection(
       key: GlobalKey(),
       navTitleBuilder: () => I18n.userSetting.tr,
+      icon: Icons.person_outline_rounded,
       cardBuilder: () => const UserSettingsCard(),
     ),
     _SettingsSection(
       key: GlobalKey(),
       navTitleBuilder: () => 'OAS${I18n.setting.tr}',
+      icon: Icons.hub_outlined,
       cardBuilder: () => const OasSettingsCard(),
     ),
     _SettingsSection(
       key: GlobalKey(),
       navTitleBuilder: () => I18n.systemSetting.tr,
+      icon: Icons.tune_rounded,
       cardBuilder: () => const SystemSettingsCard(),
     ),
   ];
@@ -85,7 +91,21 @@ class _SettingsViewState extends State<SettingsView> {
           final settingList = _buildSettingList(keyboardInset);
 
           if (!isWide) {
-            return settingList.paddingOnly(left: 8, right: 8, top: 8);
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(
+                OasxSpace.lg,
+                OasxSpace.lg,
+                OasxSpace.lg,
+                0,
+              ),
+              child: Column(
+                children: [
+                  _buildSectionTabs(),
+                  const SizedBox(height: _layoutSpacing),
+                  Expanded(child: settingList),
+                ],
+              ),
+            );
           }
 
           return Row(
@@ -95,7 +115,11 @@ class _SettingsViewState extends State<SettingsView> {
               const SizedBox(width: _layoutSpacing),
               Expanded(child: settingList),
             ],
-          ).paddingOnly(left: 8, right: 8, top: 8);
+          ).paddingOnly(
+            left: OasxSpace.lg,
+            right: OasxSpace.lg,
+            top: OasxSpace.lg,
+          );
         },
       ),
     );
@@ -104,7 +128,7 @@ class _SettingsViewState extends State<SettingsView> {
     }
     return Scaffold(
       appBar: buildPlatformAppBar(context, routePath: '/settings'),
-      body: body,
+      body: OasxBackdrop(child: body),
     );
   }
 
@@ -238,51 +262,174 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  Widget _buildPrimaryNav() {
-    return SizedBox(
-      width: _navWidth,
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: List.generate(_sections.length, (index) {
-              final isSelected = index == _selectedSectionIndex;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => _scrollToSection(index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
+  /// Horizontal section switch used below the vertical-nav breakpoint.
+  Widget _buildSectionTabs() {
+    final colors = OasxColors.of(context);
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(OasxRadius.sm),
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
+        children: [
+          for (var index = 0; index < _sections.length; index++)
+            Expanded(child: _buildSectionTab(index)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTab(int index) {
+    final colors = OasxColors.of(context);
+    final section = _sections[index];
+    final isSelected = index == _selectedSectionIndex;
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: section.navTitleBuilder(),
+      excludeSemantics: true,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          color: isSelected ? colors.accentSoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(OasxRadius.xs),
+          border: Border.all(
+            color: isSelected
+                ? colors.accent.withValues(alpha: 0.30)
+                : Colors.transparent,
+          ),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(OasxRadius.xs),
+            onTap: () => _scrollToSection(index),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  section.icon,
+                  size: 15,
+                  color: isSelected ? colors.accent : colors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    section.navTitleBuilder(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: isSelected
-                          ? Theme.of(context)
-                              .colorScheme
-                              .secondaryContainer
-                              .withValues(alpha: 0.38)
-                          : Colors.transparent,
-                    ),
-                    child: Text(
-                      _sections[index].navTitleBuilder(),
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w400,
-                          ),
+                          ? colors.accent
+                          : colors.textSecondary,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     ),
                   ),
                 ),
-              );
-            }),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrimaryNav() {
+    final colors = OasxColors.of(context);
+    return SizedBox(
+      width: _navWidth,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(OasxRadius.md),
+          border: Border.all(color: colors.border),
+        ),
+        padding: const EdgeInsets.all(OasxSpace.sm),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                OasxSpace.sm,
+                OasxSpace.xs,
+                OasxSpace.sm,
+                OasxSpace.sm + 2,
+              ),
+              child: OasxMicroLabel(I18n.setting.tr),
+            ),
+            for (var index = 0; index < _sections.length; index++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: OasxSpace.xxs),
+                child: _buildNavItem(index),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index) {
+    final colors = OasxColors.of(context);
+    final section = _sections[index];
+    final isSelected = index == _selectedSectionIndex;
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(OasxRadius.sm),
+        hoverColor: colors.surfaceRaised,
+        onTap: () => _scrollToSection(index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(
+            horizontal: OasxSpace.sm + 2,
+            vertical: OasxSpace.sm + 2,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(OasxRadius.sm),
+            color: isSelected ? colors.accentSoft : Colors.transparent,
+            border: Border.all(
+              color: isSelected
+                  ? colors.accent.withValues(alpha: 0.30)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                section.icon,
+                size: 17,
+                color: isSelected ? colors.accent : colors.textSecondary,
+              ),
+              const SizedBox(width: OasxSpace.sm + 2),
+              Expanded(
+                child: Text(
+                  section.navTitleBuilder(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected
+                        ? colors.accent
+                        : colors.textSecondary,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Container(
+                  width: 3,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: colors.accent,
+                    borderRadius: BorderRadius.circular(OasxRadius.pill),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -294,10 +441,12 @@ class _SettingsSection {
   _SettingsSection({
     required this.key,
     required this.navTitleBuilder,
+    required this.icon,
     required this.cardBuilder,
   });
 
   final GlobalKey key;
   final String Function() navTitleBuilder;
+  final IconData icon;
   final Widget Function() cardBuilder;
 }

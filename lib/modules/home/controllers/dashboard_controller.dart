@@ -5,10 +5,8 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:oasx/api/api_client.dart';
-import 'package:oasx/modules/common/models/config_drag_payload.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
 import 'package:oasx/modules/home/models/home_console_layout.dart';
-import 'package:oasx/modules/home/models/home_workbench_layout.dart';
 import 'package:oasx/modules/log/script_log_browser_controller.dart';
 import 'package:oasx/modules/settings/controllers/settings_controller.dart';
 import 'package:oasx/modules/common/models/storage_key.dart';
@@ -21,7 +19,6 @@ import 'package:oasx/modules/args/index.dart';
 import 'package:oasx/modules/server/index.dart';
 
 part 'dashboard_controller_linking.dart';
-part 'dashboard_controller_drag_copy.dart';
 part 'dashboard_controller_layout.dart';
 part 'dashboard_controller_startup.dart';
 part 'dashboard_controller_workspace.dart';
@@ -57,16 +54,8 @@ class GetStorageHomeDashboardStorage implements HomeDashboardStorage {
 /// Defines the visible dashboard health state for a script.
 enum HomeScriptStateFilter { all, running, abnormal, stopped, offline }
 
-/// Defines the visible page when the workbench collapses to a single pane.
-enum HomeWorkbenchPage { scripts, workspace }
-
 /// Defines the visible home workbench tab for the active script.
 enum HomeWorkbenchTab { status, tasks, stats, logs }
-
-/// Returns whether the tab belongs to the right desktop sidebar.
-bool isHomeWorkbenchSidebarTab(HomeWorkbenchTab value) {
-  return value == HomeWorkbenchTab.stats || value == HomeWorkbenchTab.logs;
-}
 
 /// Records which workbench tab opened the task parameter editor.
 enum HomeTaskParameterEntrySource { overview, tasks }
@@ -79,29 +68,6 @@ enum HomeBulkQuickScheduleMode { none, runNow, waitNow }
 
 /// Describes how a bulk quick schedule request finished.
 enum HomeBulkQuickScheduleResult { completed, failed, skipped, timedOut }
-
-/// Returns the visible workbench tabs for the active layout mode.
-List<HomeWorkbenchTab> resolveHomeWorkbenchTabs(HomeWorkbenchLayoutMode mode) {
-  if (mode == HomeWorkbenchLayoutMode.threePane) {
-    return const [HomeWorkbenchTab.status, HomeWorkbenchTab.tasks];
-  }
-  return const [
-    HomeWorkbenchTab.status,
-    HomeWorkbenchTab.tasks,
-    HomeWorkbenchTab.logs,
-    HomeWorkbenchTab.stats,
-  ];
-}
-
-/// Returns the visible right-sidebar tabs for the active layout mode.
-List<HomeWorkbenchTab> resolveHomeWorkbenchSidebarTabs(
-  HomeWorkbenchLayoutMode mode,
-) {
-  if (mode != HomeWorkbenchLayoutMode.threePane) {
-    return const [];
-  }
-  return const [HomeWorkbenchTab.logs, HomeWorkbenchTab.stats];
-}
 
 class HomeDashboardController extends GetxController {
   HomeDashboardController({HomeDashboardStorage? storage})
@@ -131,10 +97,6 @@ class HomeDashboardController extends GetxController {
   final stateFilter = HomeScriptStateFilter.all.obs;
   final activeScriptName = ''.obs;
   final selectedScriptList = <String>[].obs;
-  final workbenchPage = HomeWorkbenchPage.scripts.obs;
-  final workbenchCollectionWidth = kHomeWorkbenchDefaultCollectionWidth.obs;
-  final workbenchSplitRatio = kHomeWorkbenchDefaultSplitRatio.obs;
-  final workbenchLayoutMode = HomeWorkbenchLayoutMode.singlePane.obs;
   final homeConsoleLeftRatio = kHomeConsoleDefaultLeftRatio.obs;
   final homeConsoleRightRatio = kHomeConsoleDefaultRightRatio.obs;
   final isConsoleStatsVisible = false.obs;
@@ -145,12 +107,8 @@ class HomeDashboardController extends GetxController {
   /// authoritative; the workbench tab fallback only applies elsewhere.
   final isConsoleLayoutActive = false.obs;
   final activeWorkbenchTab = HomeWorkbenchTab.status.obs;
-  final _lastPrimaryWorkbenchTab = HomeWorkbenchTab.status.obs;
-  final activeWorkbenchSidebarTab = HomeWorkbenchTab.logs.obs;
   final taskCatalogFilter = HomeTaskCatalogFilter.all.obs;
   final activeTaskName = ''.obs;
-  final activeDragPayload = Rxn<ConfigDragPayload>();
-  final pendingDragCopyTargets = <String>[].obs;
   final _taskParameterEntrySource = Rxn<HomeTaskParameterEntrySource>();
   final _taskAvailabilityCache = <String, bool>{};
 
@@ -159,8 +117,6 @@ class HomeDashboardController extends GetxController {
   @override
   void onInit() {
     _loadSelection();
-    _loadWorkbenchCollectionWidth();
-    _loadWorkbenchSplitRatio();
     _loadHomeConsoleLayout();
     syncWorkspaceState();
     _workspaceSyncWorker = everAll(

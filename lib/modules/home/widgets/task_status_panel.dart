@@ -56,7 +56,6 @@ class _TaskStatusPanelState extends State<TaskStatusPanel> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final dragPayload = widget.controller.activeDragPayload.value;
       final quickScheduleLocked = widget.controller.isBulkQuickScheduling;
       final rawTasks = _collectTasks(widget.scriptModel);
       _pruneHiddenTaskIds(rawTasks);
@@ -81,8 +80,6 @@ class _TaskStatusPanelState extends State<TaskStatusPanel> {
                       final task = visibleTasks[index];
                       return TaskStatusRow(
                         key: ValueKey(task.rowId),
-                        controller: widget.controller,
-                        sourceScriptName: widget.scriptModel.name,
                         task: task,
                         canQuickSchedule: widget.canQuickScheduleTask(
                           task.name,
@@ -94,9 +91,7 @@ class _TaskStatusPanelState extends State<TaskStatusPanel> {
                         onEditTask: widget.onEditTask,
                         onDisableTask: _disableTask,
                         onDismissed: _markTaskHidden,
-                        dragEnabled: widget.controller.canUseDesktopDragCopy,
                         swipeEnabled: !_isSwipeDisabled(task),
-                        activeDragPayload: dragPayload,
                       );
                     },
                   ),

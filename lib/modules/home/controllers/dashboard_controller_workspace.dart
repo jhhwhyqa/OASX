@@ -4,14 +4,6 @@ part of 'dashboard_controller.dart';
 const _bulkQuickScheduleTimeout = Duration(seconds: 5);
 
 extension HomeDashboardWorkspaceX on HomeDashboardController {
-  /// Records the latest resolved workbench layout mode.
-  void setWorkbenchLayoutMode(HomeWorkbenchLayoutMode value) {
-    if (workbenchLayoutMode.value == value) {
-      return;
-    }
-    workbenchLayoutMode.value = value;
-  }
-
   bool canQuickScheduleTask(ScriptModel model, String taskName) {
     final normalized = taskName.trim();
     if (normalized.isEmpty) {
@@ -81,35 +73,9 @@ extension HomeDashboardWorkspaceX on HomeDashboardController {
     }
   }
 
-  List<HomeWorkbenchTab> workbenchTabsFor(HomeWorkbenchLayoutMode mode) {
-    return resolveHomeWorkbenchTabs(mode);
-  }
-
-  List<HomeWorkbenchTab> workbenchSidebarTabsFor(HomeWorkbenchLayoutMode mode) {
-    return resolveHomeWorkbenchSidebarTabs(mode);
-  }
-
-  HomeWorkbenchTab displayedWorkbenchTabFor(HomeWorkbenchLayoutMode mode) {
-    if (mode == HomeWorkbenchLayoutMode.threePane &&
-        isHomeWorkbenchSidebarTab(activeWorkbenchTab.value)) {
-      return _lastPrimaryWorkbenchTab.value;
-    }
-    return activeWorkbenchTab.value;
-  }
-
-  HomeWorkbenchTab displayedWorkbenchSidebarTabFor(
-    HomeWorkbenchLayoutMode mode,
-  ) {
-    return activeWorkbenchSidebarTab.value;
-  }
-
   bool get isStatsVisibleInCurrentLayout {
     if (isConsoleLayoutActive.value) {
       return isConsoleStatsVisible.value;
-    }
-    if (workbenchLayoutMode.value == HomeWorkbenchLayoutMode.threePane) {
-      return displayedWorkbenchSidebarTabFor(workbenchLayoutMode.value) ==
-          HomeWorkbenchTab.stats;
     }
     return activeWorkbenchTab.value == HomeWorkbenchTab.stats;
   }
@@ -162,9 +128,6 @@ extension HomeDashboardWorkspaceX on HomeDashboardController {
   }
 
   int get selectedScopeCount => selectedScopeScripts.length;
-
-  bool get isSinglePaneScriptListPage =>
-      workbenchPage.value == HomeWorkbenchPage.scripts;
 
   int countScriptsByState(HomeScriptStateFilter filter) {
     return orderedScripts
@@ -242,18 +205,6 @@ extension HomeDashboardWorkspaceX on HomeDashboardController {
     activeScriptName.value = normalized;
   }
 
-  void showScriptListPage() {
-    clearActiveTask();
-    workbenchPage.value = HomeWorkbenchPage.scripts;
-  }
-
-  void showWorkspacePage() {
-    if (activeScriptName.value.trim().isEmpty) {
-      return;
-    }
-    workbenchPage.value = HomeWorkbenchPage.workspace;
-  }
-
   void toggleScriptSelected(String scriptName, bool selected) {
     final normalized = scriptName.trim();
     if (normalized.isEmpty) {
@@ -277,28 +228,6 @@ extension HomeDashboardWorkspaceX on HomeDashboardController {
   void clearSelectedScripts() {
     selectedScriptList.clear();
     _ensureActiveScript(visibleScripts);
-  }
-
-  void setActiveWorkbenchTabValue(HomeWorkbenchTab value) {
-    if (isHomeWorkbenchSidebarTab(value)) {
-      activeWorkbenchSidebarTab.value = value;
-    } else {
-      _lastPrimaryWorkbenchTab.value = value;
-    }
-    if (value != HomeWorkbenchTab.tasks) {
-      clearActiveTask();
-    }
-    activeWorkbenchTab.value = value;
-  }
-
-  void setActiveWorkbenchSidebarTabValue(HomeWorkbenchTab value) {
-    if (!isHomeWorkbenchSidebarTab(value)) {
-      return;
-    }
-    activeWorkbenchSidebarTab.value = value;
-    if (workbenchLayoutMode.value != HomeWorkbenchLayoutMode.threePane) {
-      setActiveWorkbenchTabValue(value);
-    }
   }
 
   void setTaskCatalogFilterValue(HomeTaskCatalogFilter value) {
@@ -329,7 +258,6 @@ extension HomeDashboardWorkspaceX on HomeDashboardController {
       HomeTaskParameterEntrySource.tasks || null => HomeWorkbenchTab.tasks,
     };
     clearActiveTask();
-    _lastPrimaryWorkbenchTab.value = returnTab;
     activeWorkbenchTab.value = returnTab;
   }
 
@@ -620,7 +548,6 @@ extension HomeDashboardWorkspaceX on HomeDashboardController {
     if (candidates.isEmpty) {
       clearActiveTask();
       activeScriptName.value = '';
-      workbenchPage.value = HomeWorkbenchPage.scripts;
       return;
     }
     activeScriptName.value = candidates.isEmpty ? '' : candidates.first.name;

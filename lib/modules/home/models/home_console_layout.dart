@@ -1,28 +1,41 @@
 import 'package:flutter/foundation.dart';
 
-/// Minimum content width required by the three-column desktop console.
-const double kHomeConsoleMinWidth = 1080;
+/// Minimum content width that can host the three-column console.
+const double kHomeConsoleThreePaneMinWidth = 1000;
+
+/// Minimum content width that can host the task + log two-column console.
+const double kHomeConsoleTwoPaneMinWidth = 700;
+
+/// Width above which the statistics column can push the log instead of
+/// overlaying it.
+const double kHomeConsoleStatsPushMinWidth = 1080;
+
+/// Backwards-compatible alias for the three-pane threshold.
+const double kHomeConsoleMinWidth = kHomeConsoleThreePaneMinWidth;
 
 /// Hit area reserved for each console divider.
 const double kHomeConsoleDividerWidth = 14;
 
 /// Minimum width of the task column.
-const double kHomeConsoleMinLeftWidth = 260;
+const double kHomeConsoleMinLeftWidth = 240;
 
 /// Maximum width of the task column on very wide windows.
-const double kHomeConsoleMaxLeftWidth = 420;
+const double kHomeConsoleMaxLeftWidth = 360;
 
-/// Minimum width kept for the log column.
-const double kHomeConsoleMinCenterWidth = 480;
+/// Minimum width kept for the log column in the two-pane layout.
+const double kHomeConsoleMinCenterWidth = 440;
+
+/// Minimum width kept for the log column in the three-pane layout.
+const double kHomeConsoleThreePaneMinCenterWidth = 480;
 
 /// Width of the collapsed statistics rail.
 const double kHomeConsoleCollapsedRightWidth = 48;
 
-/// Minimum width of the statistics column.
+/// Minimum width of the expanded statistics column.
 const double kHomeConsoleMinRightWidth = 280;
 
-/// Maximum width of the statistics column on very wide windows.
-const double kHomeConsoleMaxRightWidth = 460;
+/// Maximum width of the expanded statistics column.
+const double kHomeConsoleMaxRightWidth = 400;
 
 /// Default share of the available width used by the task column.
 const double kHomeConsoleDefaultLeftRatio = 0.26;
@@ -33,6 +46,9 @@ const double kHomeConsoleDefaultRightRatio = 0.29;
 /// Legal persisted ratio range for both side columns.
 const double kHomeConsoleMinRatio = 0.15;
 const double kHomeConsoleMaxRatio = 0.45;
+
+/// Active composition of the home console.
+enum HomeConsoleLayoutMode { compact, twoPane, threePane }
 
 /// Sanitizes a persisted task-column ratio.
 double sanitizeHomeConsoleLeftRatio(dynamic rawValue) {
@@ -56,11 +72,11 @@ double _sanitizeRatio(dynamic rawValue, double defaultValue) {
   return value.clamp(kHomeConsoleMinRatio, kHomeConsoleMaxRatio).toDouble();
 }
 
-/// Resolved pixel geometry for the desktop console.
+/// Resolved pixel geometry for the home console.
 @immutable
 class HomeConsoleLayout {
   const HomeConsoleLayout({
-    required this.canShow,
+    required this.mode,
     required this.width,
     required this.availableWidth,
     required this.leftWidth,
@@ -72,11 +88,12 @@ class HomeConsoleLayout {
     required this.maxLeftRatio,
     required this.minRightRatio,
     required this.maxRightRatio,
+    required this.canPushStats,
   });
 
-  /// Creates a result for windows that are too narrow for the console.
-  const HomeConsoleLayout.hidden()
-    : canShow = false,
+  /// Creates a result for widths that only support one pane.
+  const HomeConsoleLayout.compact()
+    : mode = HomeConsoleLayoutMode.compact,
       width = 0,
       availableWidth = 0,
       leftWidth = 0,
@@ -87,15 +104,15 @@ class HomeConsoleLayout {
       minLeftRatio = kHomeConsoleMinRatio,
       maxLeftRatio = kHomeConsoleMaxRatio,
       minRightRatio = kHomeConsoleMinRatio,
-      maxRightRatio = kHomeConsoleMaxRatio;
+      maxRightRatio = kHomeConsoleMaxRatio,
+      canPushStats = false;
 
-  /// Whether the console can be rendered at this width.
-  final bool canShow;
+  final HomeConsoleLayoutMode mode;
 
   /// Total content width.
   final double width;
 
-  /// Width available to the three columns after removing dividers.
+  /// Width available after removing dividers.
   final double availableWidth;
 
   final double leftWidth;
@@ -110,49 +127,129 @@ class HomeConsoleLayout {
   final double maxLeftRatio;
   final double minRightRatio;
   final double maxRightRatio;
+
+  /// Whether the expanded statistics column fits without shrinking the log
+  /// below its minimum readable width.
+  final bool canPushStats;
+
+  /// Whether the console can render more than one pane.
+  bool get canShow => mode != HomeConsoleLayoutMode.compact;
+
+  bool get usesThreePane => mode == HomeConsoleLayoutMode.threePane;
+
+  bool get usesTwoPane => mode == HomeConsoleLayoutMode.twoPane;
 }
 
-/// Resolves the three-column console geometry for one width.
+/// Resolves the console geometry for one width.
+///
+/// [statsExpanded] only affects three-pane layouts above
+/// [kHomeConsoleStatsPushMinWidth]. Below that width the right column stays
+/// collapsed and the statistics pane is presented as an overlay by the caller.
 HomeConsoleLayout resolveHomeConsoleLayout({
   required double maxWidth,
   required double leftRatio,
   required double rightRatio,
+  bool statsExpanded = false,
 }) {
   final width = maxWidth.isFinite ? maxWidth : 0.0;
-  if (width < kHomeConsoleMinWidth) {
-    return const HomeConsoleLayout.hidden();
+  if (width < kHomeConsoleTwoPaneMinWidth) {
+    return const HomeConsoleLayout.compact();
   }
+  if (width < kHomeConsoleThreePaneMinWidth) {
+    return _resolveTwoPane(width: width, leftRatio: leftRatio);
+  }
+  return _resolveThreePane(
+    width: width,
+    leftRatio: leftRatio,
+    rightRatio: rightRatio,
+    statsExpanded: statsExpanded,
+  );
+}
+
+HomeConsoleLayout _resolveTwoPane({
+  required double width,
+  required double leftRatio,
+}) {
+  final available = width - kHomeConsoleDividerWidth;
+  if (available <= 0) {
+    return const HomeConsoleLayout.compact();
+  }
+  const minLeft = kHomeConsoleMinLeftWidth;
+  final maxLeft = _minRatio(
+    kHomeConsoleMaxLeftWidth,
+    available - kHomeConsoleMinCenterWidth,
+  );
+  final normalizedLeft = sanitizeHomeConsoleLeftRatio(leftRatio);
+  final appliedLeftRatio = normalizedLeft
+      .clamp(minLeft / available, maxLeft / available)
+      .toDouble();
+  final leftWidth = appliedLeftRatio * available;
+  final centerWidth = available - leftWidth;
+  return HomeConsoleLayout(
+    mode: HomeConsoleLayoutMode.twoPane,
+    width: width,
+    availableWidth: available,
+    leftWidth: leftWidth,
+    centerWidth: centerWidth,
+    rightWidth: 0,
+    appliedLeftRatio: appliedLeftRatio,
+    appliedRightRatio: 0,
+    minLeftRatio: minLeft / available,
+    maxLeftRatio: maxLeft / available,
+    minRightRatio: 0,
+    maxRightRatio: 0,
+    canPushStats: false,
+  );
+}
+
+HomeConsoleLayout _resolveThreePane({
+  required double width,
+  required double leftRatio,
+  required double rightRatio,
+  required bool statsExpanded,
+}) {
   final available = width - kHomeConsoleDividerWidth * 2;
   if (available <= 0) {
-    return const HomeConsoleLayout.hidden();
+    return const HomeConsoleLayout.compact();
   }
-
+  final wantsExpanded =
+      statsExpanded && width >= kHomeConsoleStatsPushMinWidth;
   final normalizedLeft = sanitizeHomeConsoleLeftRatio(leftRatio);
   final normalizedRight = sanitizeHomeConsoleRightRatio(rightRatio);
 
-  final minLeftRatio = kHomeConsoleMinLeftWidth / available;
-  final maxLeftRatio = _minRatio(
-    kHomeConsoleMaxLeftWidth / available,
-    1 - (kHomeConsoleMinCenterWidth + kHomeConsoleMinRightWidth) / available,
+  const minRight = kHomeConsoleMinRightWidth;
+  const minLeft = kHomeConsoleMinLeftWidth;
+  final maxLeft = _minRatio(
+    kHomeConsoleMaxLeftWidth,
+    available -
+        kHomeConsoleThreePaneMinCenterWidth -
+        (wantsExpanded ? minRight : kHomeConsoleCollapsedRightWidth),
   );
   final appliedLeftRatio = normalizedLeft
-      .clamp(minLeftRatio, maxLeftRatio)
+      .clamp(minLeft / available, maxLeft / available)
       .toDouble();
   final leftWidth = appliedLeftRatio * available;
 
-  final minRightRatio = kHomeConsoleMinRightWidth / available;
-  final maxRightRatio = _minRatio(
-    kHomeConsoleMaxRightWidth / available,
-    1 - (kHomeConsoleMinCenterWidth + leftWidth) / available,
+  // Clamp the right column against the width the left column actually took,
+  // otherwise both side caps can be satisfied while the log falls below its
+  // minimum.
+  final maxRightForExpanded = _minRatio(
+    kHomeConsoleMaxRightWidth,
+    available - leftWidth - kHomeConsoleThreePaneMinCenterWidth,
   );
-  final appliedRightRatio = normalizedRight
-      .clamp(minRightRatio, maxRightRatio)
-      .toDouble();
-  final rightWidth = appliedRightRatio * available;
+  final canExpand = wantsExpanded && maxRightForExpanded >= minRight;
+  final rightWidth = canExpand
+      ? (normalizedRight * available)
+            .clamp(minRight.toDouble(), maxRightForExpanded)
+            .toDouble()
+      : kHomeConsoleCollapsedRightWidth;
+  final appliedRightRatio = rightWidth / available;
+  final minRightRatio = canExpand ? minRight / available : 0.0;
+  final maxRightRatio = canExpand ? maxRightForExpanded / available : 0.0;
   final centerWidth = available - leftWidth - rightWidth;
 
   return HomeConsoleLayout(
-    canShow: true,
+    mode: HomeConsoleLayoutMode.threePane,
     width: width,
     availableWidth: available,
     leftWidth: leftWidth,
@@ -160,10 +257,11 @@ HomeConsoleLayout resolveHomeConsoleLayout({
     rightWidth: rightWidth,
     appliedLeftRatio: appliedLeftRatio,
     appliedRightRatio: appliedRightRatio,
-    minLeftRatio: minLeftRatio,
-    maxLeftRatio: maxLeftRatio,
+    minLeftRatio: minLeft / available,
+    maxLeftRatio: maxLeft / available,
     minRightRatio: minRightRatio,
     maxRightRatio: maxRightRatio,
+    canPushStats: canExpand,
   );
 }
 
@@ -172,6 +270,9 @@ double clampHomeConsoleLeftRatio({
   required HomeConsoleLayout layout,
   required double targetRatio,
 }) {
+  if (!layout.canShow) {
+    return targetRatio;
+  }
   return targetRatio.clamp(layout.minLeftRatio, layout.maxLeftRatio).toDouble();
 }
 
@@ -180,6 +281,9 @@ double clampHomeConsoleRightRatio({
   required HomeConsoleLayout layout,
   required double targetRatio,
 }) {
+  if (!layout.canPushStats || layout.maxRightRatio <= 0) {
+    return targetRatio;
+  }
   return targetRatio
       .clamp(layout.minRightRatio, layout.maxRightRatio)
       .toDouble();

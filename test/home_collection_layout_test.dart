@@ -9,9 +9,7 @@ import 'package:oasx/config/theme.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/controllers/statistics_controller.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
-import 'package:oasx/modules/home/models/home_workbench_layout.dart';
 import 'package:oasx/modules/home/models/taskitem_model.dart';
-import 'package:oasx/modules/home/widgets/active_config_panel.dart';
 import 'package:oasx/modules/home/widgets/config_collection_panel.dart';
 import 'package:oasx/modules/home/widgets/config_workbench.dart';
 import 'package:oasx/modules/home/widgets/console_stats_pane.dart';
@@ -184,75 +182,18 @@ void main() {
     }
   }
 
-  Future<void> pumpActivePanel(
-    WidgetTester tester, {
-    required double width,
-    required ThemeData theme,
-  }) async {
-    controller.setActiveScript('alpha');
-    await tester.pumpWidget(
-      GetMaterialApp(
-        theme: theme,
-        translations: Messages(),
-        locale: const Locale('en', 'US'),
-        fallbackLocale: const Locale('en', 'US'),
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: width,
-              height: 620,
-              child: ActiveConfigPanel(
-                controller: controller,
-                layoutMode: HomeWorkbenchLayoutMode.twoPane,
-                onChangeTab: (_) async {},
-                onOpenTask: (_, __) async {},
-                onTogglePower: (_, __) async {},
-                onRenameScript: (_) async {},
-                onDeleteScript: (_) async {},
-                onSetNextRun: (_, __) async {},
-                onQuickRun: (_) async {},
-                onQuickWait: (_) async {},
-                onBulkQuickRun: () async {},
-                onBulkQuickWait: () async {},
-                onExpandRightSidebar: () {},
-                onBackToScripts: () {},
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-  }
-
-  for (final theme in <String, ThemeData>{
-    'light': lightTheme,
-    'dark': darkTheme,
-  }.entries) {
-    for (final width in <double>[320, 760]) {
-      testWidgets(
-        'active panel renders without overflow (${theme.key}, ${width}px)',
-        (tester) async {
-          await pumpActivePanel(tester, width: width, theme: theme.value);
-          expect(tester.takeException(), isNull);
-          expect(find.text('alpha'), findsWidgets);
-        },
-      );
-    }
-  }
-
   testWidgets('filter menu exposes the same script states', (tester) async {
     await pumpPanel(tester, width: 340, theme: lightTheme);
     await tester.tap(find.byIcon(Icons.filter_list_rounded));
     await tester.pumpAndSettle();
     expect(find.text('Select all'), findsOneWidget);
     expect(
-      find.byType(CheckedPopupMenuItem<HomeScriptStateFilter>),
+      find.byType(PopupMenuItem<HomeScriptStateFilter>),
       findsNWidgets(4),
     );
     expect(
       find.descendant(
-        of: find.byType(CheckedPopupMenuItem<HomeScriptStateFilter>),
+        of: find.byType(PopupMenuItem<HomeScriptStateFilter>),
         matching: find.text('Running'),
       ),
       findsOneWidget,
@@ -358,7 +299,7 @@ void main() {
           expect(find.byType(ConsoleStatsPane), findsNothing);
           expect(
             find.byKey(const ValueKey<String>('config-summary')),
-            width >= 1600 ? findsOneWidget : findsNothing,
+            width >= 1280 ? findsOneWidget : findsNothing,
           );
 
           // The center column is a single card: task pane, log panel and
@@ -568,47 +509,14 @@ void main() {
     expect(find.byType(ConfigCollectionPanel), findsOneWidget);
   });
 
-  testWidgets(
-    'workbench keeps the existing layout below the console breakpoint',
-    (tester) async {
-      controller.setActiveScript('alpha');
-      await tester.binding.setSurfaceSize(const Size(1000, 800));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(
-        GetMaterialApp(
-          theme: lightTheme,
-          translations: Messages(),
-          locale: const Locale('en', 'US'),
-          fallbackLocale: const Locale('en', 'US'),
-          home: Scaffold(
-            body: ConfigWorkbench(
-              controller: controller,
-              scriptService: Get.find<ScriptService>(),
-              loadingAddScript: false,
-              refreshingScripts: false,
-              onAddScriptTap: () {},
-              onRefreshScriptsTap: () {},
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(tester.takeException(), isNull);
-      expect(
-        find.byKey(const ValueKey<String>('home-workbench-desktop')),
-        findsOneWidget,
-      );
-      expect(find.byType(HomeConsole), findsNothing);
-    },
-  );
-
-  testWidgets('workbench switches to the console at the breakpoint', (
-    tester,
-  ) async {
+  Future<void> pumpWorkbench(
+    WidgetTester tester, {
+    required double width,
+    double textScale = 1,
+  }) async {
     controller.setActiveScript('alpha');
     registerLogControllers();
-    await tester.binding.setSurfaceSize(const Size(1080, 800));
+    await tester.binding.setSurfaceSize(Size(width, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       GetMaterialApp(
@@ -616,6 +524,12 @@ void main() {
         translations: Messages(),
         locale: const Locale('en', 'US'),
         fallbackLocale: const Locale('en', 'US'),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: child!,
+        ),
         home: Scaffold(
           body: ConfigWorkbench(
             controller: controller,
@@ -629,8 +543,137 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('narrow home keeps the task and log two-pane console', (
+    tester,
+  ) async {
+    await pumpWorkbench(tester, width: 900);
 
     expect(tester.takeException(), isNull);
     expect(find.byType(HomeConsole), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('home-console-desktop')),
+      findsOneWidget,
+    );
+    expect(find.byType(ConsoleTaskPane), findsOneWidget);
+    expect(find.byType(ConsoleStatsRail), findsNothing);
+    expect(find.byType(HomePaneCard), findsNWidgets(2));
+  });
+
+  testWidgets('wide home uses the three-pane console', (tester) async {
+    await pumpWorkbench(tester, width: 1280);
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(HomeConsole), findsOneWidget);
+    expect(find.byType(ConsoleTaskPane), findsOneWidget);
+    expect(find.byType(ConsoleStatsRail), findsOneWidget);
+    expect(find.byType(HomePaneCard), findsNWidgets(3));
+  });
+
+  testWidgets('compact home renders the segmented console', (tester) async {
+    await pumpWorkbench(tester, width: 600);
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(HomeConsole), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('home-console-desktop')),
+      findsNothing,
+    );
+    expect(find.byType(ConsoleStatsRail), findsNothing);
+    expect(find.byType(LogCenterPanel), findsOneWidget);
+
+    await tester.tap(find.text('Tasks'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ConsoleTaskPane), findsOneWidget);
+
+    await tester.tap(find.text('Stats'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ConsoleStatsPane), findsOneWidget);
+    expect(controller.isConsoleStatsVisible.value, isTrue);
+  });
+
+  testWidgets('two-pane home opens statistics as an overlay', (tester) async {
+    await pumpWorkbench(tester, width: 900);
+
+    expect(find.byType(ConsoleStatsPane), findsNothing);
+    await tester.tap(find.byTooltip('Stats'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ConsoleStatsPane), findsOneWidget);
+    expect(controller.isConsoleStatsVisible.value, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(ConsoleStatsPane), findsNothing);
+    expect(controller.isConsoleStatsVisible.value, isFalse);
+  });
+
+  testWidgets('compact statistics collapse returns to the log tab', (
+    tester,
+  ) async {
+    await pumpWorkbench(tester, width: 600);
+
+    await tester.tap(find.text('Stats'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ConsoleStatsPane).hitTestable(), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Collapse stats'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ConsoleStatsPane).hitTestable(), findsNothing);
+    expect(find.byType(LogCenterPanel).hitTestable(), findsOneWidget);
+    expect(controller.isConsoleStatsVisible.value, isFalse);
+  });
+
+  testWidgets('compact tabs keep the log search text', (tester) async {
+    await pumpWorkbench(tester, width: 600);
+
+    final logSearch = find.descendant(
+      of: find.byType(LogCenterPanel),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(logSearch.first, 'needle');
+    await tester.pump();
+
+    await tester.tap(find.text('Tasks'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Log'));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(logSearch.first);
+    expect(field.controller?.text, 'needle');
+  });
+
+  testWidgets('compact task tab at 2x text has no overflow', (tester) async {
+    await pumpWorkbench(tester, width: 390, textScale: 2);
+
+    await tester.tap(find.text('Tasks'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ConsoleTaskPane).hitTestable(), findsOneWidget);
+  });
+
+  testWidgets('compact stats is not suppressed by a stale maximized log', (
+    tester,
+  ) async {
+    await pumpWorkbench(tester, width: 600);
+    await tester.tap(find.text('Stats'));
+    await tester.pumpAndSettle();
+
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Maximize log'));
+    await tester.pumpAndSettle();
+
+    await tester.binding.setSurfaceSize(const Size(600, 800));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ConsoleStatsPane).hitTestable(), findsOneWidget);
+    expect(controller.isConsoleStatsVisible.value, isTrue);
   });
 }

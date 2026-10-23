@@ -4,9 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oasx/config/theme.dart';
 import 'package:oasx/modules/args/index.dart';
-import 'package:oasx/modules/common/models/config_drag_payload.dart';
-import 'package:oasx/modules/common/widgets/drag_copy_feedback.dart';
-import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/widgets/split_scroll_row.dart';
 import 'package:oasx/modules/home/widgets/task_status_swipe_container.dart';
 import 'package:oasx/translation/i18n_content.dart';
@@ -35,8 +32,6 @@ enum TaskStatusType { running, pending, waiting }
 class TaskStatusRow extends StatelessWidget {
   const TaskStatusRow({
     super.key,
-    required this.controller,
-    required this.sourceScriptName,
     required this.task,
     required this.canQuickSchedule,
     required this.quickScheduleLocked,
@@ -46,13 +41,9 @@ class TaskStatusRow extends StatelessWidget {
     required this.onEditTask,
     required this.onDisableTask,
     required this.onDismissed,
-    required this.dragEnabled,
     required this.swipeEnabled,
-    required this.activeDragPayload,
   });
 
-  final HomeDashboardController controller;
-  final String sourceScriptName;
   final TaskStatusViewData task;
   final bool canQuickSchedule;
   final bool quickScheduleLocked;
@@ -62,56 +53,66 @@ class TaskStatusRow extends StatelessWidget {
   final Future<void> Function(String taskName) onEditTask;
   final Future<bool> Function(String taskName) onDisableTask;
   final ValueChanged<String> onDismissed;
-  final bool dragEnabled;
   final bool swipeEnabled;
-  final ConfigDragPayload? activeDragPayload;
   static const double _actionExtent = 132;
 
   @override
   Widget build(BuildContext context) {
     final rowBackground = _rowBackground(context);
-    return TaskStatusSwipeContainer(
-      enabled: swipeEnabled,
-      onConfirmDismiss: () => onDisableTask(task.name),
-      onDismissed: () => onDismissed(task.rowId),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: _foregroundColor(context, rowBackground),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _borderColor(context)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: SplitScrollRow(
-            minHeight: 40,
-            trailingExtent: _actionExtent,
-            trailingBackgroundColor: rowBackground,
-            trailing: _TaskActionBar(
-              onQuickRun: !quickScheduleLocked && canQuickSchedule
-                  ? () => onQuickRun(task.name)
-                  : null,
-              onQuickWait: !quickScheduleLocked && canQuickSchedule
-                  ? () => onQuickWait(task.name)
-                  : null,
-              onEditTask: () => onEditTask(task.name),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Narrow rows keep one overflow menu instead of three pinned icons so
+        // the task name keeps as much width as possible.
+        final compactActions =
+            constraints.maxWidth < 240 ||
+            MediaQuery.textScalerOf(context).scale(1) > 1.25;
+        return TaskStatusSwipeContainer(
+          enabled: swipeEnabled,
+          onConfirmDismiss: () => onDisableTask(task.name),
+          onDismissed: () => onDismissed(task.rowId),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: rowBackground,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _borderColor(context)),
             ),
-            leading: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _TaskTypeIcon(type: task.type),
-                const SizedBox(width: 10),
-                _TaskMeta(
-                  controller: controller,
-                  sourceScriptName: sourceScriptName,
-                  task: task,
-                  onSetNextRun: onSetNextRun,
-                  dragEnabled: dragEnabled,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: SplitScrollRow(
+                minHeight: 40,
+                trailingExtent: compactActions ? 44 : _actionExtent,
+                trailingBackgroundColor: rowBackground,
+                trailing: _TaskActionBar(
+                  compact: compactActions,
+                  onQuickRun: !quickScheduleLocked && canQuickSchedule
+                      ? () => onQuickRun(task.name)
+                      : null,
+                  onQuickWait: !quickScheduleLocked && canQuickSchedule
+                      ? () => onQuickWait(task.name)
+                      : null,
+                  onEditTask: () => onEditTask(task.name),
                 ),
-              ],
+                leading: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _TaskTypeIcon(type: task.type),
+                    const SizedBox(width: 10),
+                    // A little vertical breathing room keeps scaled CJK glyphs
+                    // inside the row's horizontal scroll viewport.
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: _TaskMeta(
+                        task: task,
+                        onSetNextRun: onSetNextRun,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -127,18 +128,6 @@ class TaskStatusRow extends StatelessWidget {
         alpha: 0.30,
       ),
     };
-  }
-
-  /// Resolves the highlighted foreground color during drag-copy sessions.
-  Color _foregroundColor(BuildContext context, Color fallback) {
-    final isDraggingTask =
-        activeDragPayload?.matchesTask(sourceScriptName, task.name) ?? false;
-    if (!isDraggingTask) {
-      return fallback;
-    }
-    return Theme.of(
-      context,
-    ).colorScheme.primaryContainer.withValues(alpha: 0.42);
   }
 
   /// Resolves the row border tint by task bucket.

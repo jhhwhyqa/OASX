@@ -13,8 +13,6 @@ import 'package:flutter_pickers/time_picker/model/pduration.dart';
 import 'package:flutter_pickers/time_picker/model/suffix.dart';
 import 'package:get/get.dart';
 import 'package:oasx/api/api_client.dart';
-import 'package:oasx/modules/common/models/config_drag_payload.dart';
-import 'package:oasx/modules/common/widgets/drag_copy_feedback.dart';
 import 'package:oasx/service/websocket_service.dart';
 import 'package:oasx/utils/platform_utils.dart';
 import 'package:styled_widget/styled_widget.dart';
@@ -52,28 +50,18 @@ class Args extends StatelessWidget {
     Key? key,
     this.scriptName,
     this.taskName,
-    this.groupDraggable = true,
     this.groupPager = false,
     this.stagingMode = false,
     this.lockImmediateScheduling = false,
-    this.activeDragPayload,
-    this.groupDragPayloadBuilder,
-    this.onGroupDragStarted,
-    this.onGroupDragEnded,
     this.setArgumentOverride,
     this.onCancel,
   }) : super(key: key);
 
   final String? scriptName;
   final String? taskName;
-  final bool groupDraggable;
   final bool groupPager;
   final bool stagingMode;
   final bool lockImmediateScheduling;
-  final ConfigDragPayload? activeDragPayload;
-  final ConfigDragPayload Function(String groupName)? groupDragPayloadBuilder;
-  final ValueChanged<ConfigDragPayload>? onGroupDragStarted;
-  final VoidCallback? onGroupDragEnded;
   final SetArgumentCallback? setArgumentOverride;
   final Future<void> Function()? onCancel;
 
@@ -137,13 +125,6 @@ class Args extends StatelessWidget {
                         borderRadius:
                             const BorderRadius.all(Radius.circular(10)),
                         title: <Widget>[
-                          if (groupDraggable)
-                            _buildGroupDragHandle(
-                              context,
-                              selectedScript,
-                              selectedTask,
-                              name,
-                            ),
                           Text(name.tr),
                         ].toRow(
                           mainAxisAlignment: MainAxisAlignment.start,
@@ -229,13 +210,6 @@ class Args extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      if (groupDraggable)
-                        _buildGroupDragHandle(
-                          context,
-                          selectedScript,
-                          selectedTask,
-                          selected,
-                        ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Text(
@@ -299,26 +273,6 @@ class Args extends StatelessWidget {
         .withValues(alpha: 0.24);
   }
 
-  Widget _buildGroupDragHandle(
-    BuildContext context,
-    String selectedScript,
-    String selectedTask,
-    String groupName,
-  ) {
-    final payload = groupDragPayloadBuilder?.call(groupName);
-    if (payload == null) {
-      return const Icon(Icons.drag_indicator_outlined);
-    }
-    return Draggable<ConfigDragPayload>(
-      data: payload,
-      feedback: DragCopyFeedback(label: payload.displayLabel),
-      onDragStarted: () => onGroupDragStarted?.call(payload),
-      onDragCompleted: () => onGroupDragEnded?.call(),
-      onDraggableCanceled: (_, __) => onGroupDragEnded?.call(),
-      onDragEnd: (_) => onGroupDragEnded?.call(),
-      child: const Icon(Icons.drag_indicator_outlined),
-    );
-  }
 }
 
 class ArgsDraftBar extends StatelessWidget {

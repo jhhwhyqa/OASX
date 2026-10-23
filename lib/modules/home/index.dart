@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oasx/modules/common/widgets/add_config_dialog.dart';
 import 'package:oasx/modules/common/widgets/appbar.dart';
+import 'package:oasx/modules/common/widgets/oasx_backdrop.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/widgets/config_workbench.dart';
 import 'package:oasx/modules/server/controllers/server_controller.dart';
@@ -100,7 +101,7 @@ class _HomeViewState extends State<HomeView> {
               ]
             : const [],
       ),
-      body: body,
+      body: OasxBackdrop(child: body),
     );
   }
 }

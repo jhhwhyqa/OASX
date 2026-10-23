@@ -135,8 +135,6 @@ class HomeStatisticsController extends GetxController {
       [
         dashboardController.activeScriptName,
         dashboardController.activeWorkbenchTab,
-        dashboardController.activeWorkbenchSidebarTab,
-        dashboardController.workbenchLayoutMode,
         dashboardController.isConsoleStatsVisible,
         dashboardController.isConsoleLayoutActive,
       ],

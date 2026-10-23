@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oasx/api/api_client.dart';
 import 'package:oasx/modules/args/index.dart';
-import 'package:oasx/modules/common/models/config_drag_payload.dart';
-import 'package:oasx/modules/common/widgets/drag_copy_feedback.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
 import 'package:oasx/modules/home/widgets/split_scroll_row.dart';
@@ -67,12 +65,11 @@ class _TaskCatalogPanelState extends State<TaskCatalogPanel> {
   Widget build(BuildContext context) {
     return Obx(() {
       final activeTask = widget.controller.activeTaskName.value.trim();
-      final dragPayload = widget.controller.activeDragPayload.value;
       final quickScheduleLocked = widget.controller.isBulkQuickScheduling;
       return IndexedStack(
         index: activeTask.isEmpty ? 0 : 1,
         children: [
-          _buildTaskList(context, dragPayload, quickScheduleLocked),
+          _buildTaskList(context, quickScheduleLocked),
           TaskParameterPanel(
             controller: widget.controller,
             scriptModel: widget.scriptModel,
@@ -85,7 +82,6 @@ class _TaskCatalogPanelState extends State<TaskCatalogPanel> {
 
   Widget _buildTaskList(
     BuildContext context,
-    ConfigDragPayload? dragPayload,
     bool quickScheduleLocked,
   ) {
     return Column(
@@ -131,7 +127,6 @@ class _TaskCatalogPanelState extends State<TaskCatalogPanel> {
                 ),
                 itemBuilder: (context, index) => _CatalogSectionCard(
                   controller: widget.controller,
-                  sourceScriptName: widget.scriptModel.name,
                   section: sections[index],
                   expanded: _expandedGroups.contains(sections[index].groupName),
                   forceExpanded: _searchQuery.isNotEmpty,
@@ -146,8 +141,6 @@ class _TaskCatalogPanelState extends State<TaskCatalogPanel> {
                   canQuickScheduleTask: (taskName) => widget.controller
                       .canQuickScheduleTask(widget.scriptModel, taskName),
                   quickScheduleLocked: quickScheduleLocked,
-                  dragEnabled: widget.controller.canUseDesktopDragCopy,
-                  activeDragPayload: dragPayload,
                 ),
               );
             },
@@ -340,50 +333,16 @@ class _TaskCatalogPanelState extends State<TaskCatalogPanel> {
 class _CatalogSectionTitle extends StatelessWidget {
   const _CatalogSectionTitle({
     required this.controller,
-    required this.sourceScriptName,
     required this.section,
-    required this.dragEnabled,
-    required this.activeDragPayload,
   });
 
   final HomeDashboardController controller;
-  final String sourceScriptName;
   final _CatalogSectionData section;
-  final bool dragEnabled;
-  final ConfigDragPayload? activeDragPayload;
 
   @override
   Widget build(BuildContext context) {
-    final payload = controller.buildTaskCatalogGroupDragPayload(
-      sourceConfig: sourceScriptName,
-      groupName: section.groupName,
-      taskNames: section.allTaskNames,
-    );
-    final isDraggingGroup =
-        activeDragPayload?.matchesTaskCatalogGroup(
-          sourceScriptName,
-          section.groupName,
-        ) ??
-        false;
     return Row(
       children: [
-        if (dragEnabled) ...[
-          Draggable<ConfigDragPayload>(
-            data: payload,
-            feedback: DragCopyFeedback(label: payload.displayLabel),
-            onDragStarted: () => controller.startConfigDrag(payload),
-            onDragCompleted: controller.clearConfigDrag,
-            onDraggableCanceled: (_, __) => controller.clearConfigDrag(),
-            onDragEnd: (_) => controller.clearConfigDrag(),
-            child: Icon(
-              Icons.drag_indicator_outlined,
-              color: isDraggingGroup
-                  ? Theme.of(context).colorScheme.primary
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 10),
-        ],
         Expanded(
           child: Text(
             section.groupName.tr,
@@ -404,7 +363,6 @@ class _CatalogSectionTitle extends StatelessWidget {
 class _CatalogTaskRow extends StatelessWidget {
   const _CatalogTaskRow({
     required this.controller,
-    required this.sourceScriptName,
     required this.task,
     required this.loading,
     required this.onToggleEnabled,
@@ -413,12 +371,9 @@ class _CatalogTaskRow extends StatelessWidget {
     required this.onQuickWait,
     required this.canQuickScheduleTask,
     required this.quickScheduleLocked,
-    required this.dragEnabled,
-    required this.activeDragPayload,
   });
 
   final HomeDashboardController controller;
-  final String sourceScriptName;
   final _CatalogTaskData task;
   final bool loading;
   final ValueChanged<bool> onToggleEnabled;
@@ -427,31 +382,20 @@ class _CatalogTaskRow extends StatelessWidget {
   final Future<void> Function(String taskName) onQuickWait;
   final bool Function(String taskName) canQuickScheduleTask;
   final bool quickScheduleLocked;
-  final bool dragEnabled;
-  final ConfigDragPayload? activeDragPayload;
   static const _actionExtent = 132.0;
   static const _minRowHeight = 40.0;
 
   @override
   Widget build(BuildContext context) {
-    final isDraggingTask =
-        activeDragPayload?.matchesTask(sourceScriptName, task.name) ?? false;
     final rowBackground = Theme.of(
       context,
     ).colorScheme.secondaryContainer.withValues(alpha: 0.18);
-    final dragColor = Theme.of(
-      context,
-    ).colorScheme.primaryContainer.withValues(alpha: 0.42);
     final isScriptGroup = task.groupName == I18n.script;
     final supportsEnable = !isScriptGroup || task.name == I18n.restart;
-    final payload = controller.buildTaskDragPayload(
-      sourceConfig: sourceScriptName,
-      taskName: task.name,
-    );
     final nameLabel = Text(
       task.name.tr,
       maxLines: 1,
-      overflow: TextOverflow.visible,
+      overflow: TextOverflow.ellipsis,
       softWrap: false,
       style: Theme.of(context).textTheme.bodyLarge,
     );
@@ -460,7 +404,7 @@ class _CatalogTaskRow extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         decoration: BoxDecoration(
-          color: isDraggingTask ? dragColor : Colors.transparent,
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: SplitScrollRow(
@@ -488,18 +432,7 @@ class _CatalogTaskRow extends StatelessWidget {
               else
                 const SizedBox(width: 22, height: 22),
               const SizedBox(width: 10),
-              dragEnabled
-                  ? Draggable<ConfigDragPayload>(
-                      data: payload,
-                      feedback: DragCopyFeedback(label: payload.displayLabel),
-                      onDragStarted: () => controller.startConfigDrag(payload),
-                      onDragCompleted: controller.clearConfigDrag,
-                      onDraggableCanceled: (_, __) =>
-                          controller.clearConfigDrag(),
-                      onDragEnd: (_) => controller.clearConfigDrag(),
-                      child: nameLabel,
-                    )
-                  : nameLabel,
+              nameLabel,
             ],
           ),
         ),
@@ -550,7 +483,6 @@ class _EnableIcon extends StatelessWidget {
 class _CatalogSectionCard extends StatelessWidget {
   const _CatalogSectionCard({
     required this.controller,
-    required this.sourceScriptName,
     required this.section,
     required this.expanded,
     required this.forceExpanded,
@@ -562,12 +494,9 @@ class _CatalogSectionCard extends StatelessWidget {
     required this.onQuickWait,
     required this.canQuickScheduleTask,
     required this.quickScheduleLocked,
-    required this.dragEnabled,
-    required this.activeDragPayload,
   });
 
   final HomeDashboardController controller;
-  final String sourceScriptName;
   final _CatalogSectionData section;
   final bool expanded;
   final bool forceExpanded;
@@ -580,28 +509,16 @@ class _CatalogSectionCard extends StatelessWidget {
   final Future<void> Function(String taskName) onQuickWait;
   final bool Function(String taskName) canQuickScheduleTask;
   final bool quickScheduleLocked;
-  final bool dragEnabled;
-  final ConfigDragPayload? activeDragPayload;
 
   @override
   Widget build(BuildContext context) {
     final effectiveExpanded = forceExpanded || expanded;
     final scheme = Theme.of(context).colorScheme;
     final cardColor = Theme.of(context).cardColor;
-    final isDraggingGroup =
-        activeDragPayload?.matchesTaskCatalogGroup(
-          sourceScriptName,
-          section.groupName,
-        ) ??
-        false;
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      color: isDraggingGroup
-          ? scheme.primaryContainer.withValues(alpha: 0.35)
-          : effectiveExpanded
-          ? cardColor
-          : scheme.surfaceContainerLow,
+      color: effectiveExpanded ? cardColor : scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
@@ -617,10 +534,7 @@ class _CatalogSectionCard extends StatelessWidget {
                   Expanded(
                     child: _CatalogSectionTitle(
                       controller: controller,
-                      sourceScriptName: sourceScriptName,
                       section: section,
-                      dragEnabled: dragEnabled,
-                      activeDragPayload: activeDragPayload,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -651,7 +565,6 @@ class _CatalogSectionCard extends StatelessWidget {
                     if (index > 0) const Divider(height: 1),
                     _CatalogTaskRow(
                       controller: controller,
-                      sourceScriptName: sourceScriptName,
                       task: section.tasks[index],
                       loading: togglingTasks.contains(
                         section.tasks[index].name,
@@ -663,8 +576,6 @@ class _CatalogSectionCard extends StatelessWidget {
                       onQuickWait: onQuickWait,
                       canQuickScheduleTask: canQuickScheduleTask,
                       quickScheduleLocked: quickScheduleLocked,
-                      dragEnabled: dragEnabled,
-                      activeDragPayload: activeDragPayload,
                     ),
                   ],
                 ],

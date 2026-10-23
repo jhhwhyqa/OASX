@@ -1,8 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:oasx/modules/common/models/config_drag_payload.dart';
+import 'package:oasx/modules/common/widgets/oasx_panel.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
 import 'package:oasx/modules/home/widgets/config_collection_tile.dart';
@@ -52,18 +50,12 @@ class ConfigCollectionPanel extends StatefulWidget {
 }
 
 class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
-  static const _autoScrollEdgeExtent = 56.0;
-  static const _autoScrollStep = 10.0;
-
   /// Tracks whether the compact filter row should show the search field.
   bool _showCompactSearch = false;
 
   /// Controller reused when the compact search field is visible.
   late final TextEditingController _searchController;
   final ScrollController _listScrollController = ScrollController();
-  final GlobalKey _listViewportKey = GlobalKey();
-  Timer? _autoScrollTimer;
-  double _autoScrollDirection = 0;
 
   @override
   void initState() {
@@ -75,7 +67,6 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
 
   @override
   void dispose() {
-    _stopAutoScroll();
     _searchController.dispose();
     _listScrollController.dispose();
     super.dispose();
@@ -86,10 +77,6 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
     return HomePaneCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Obx(() {
-        final activeDragPayload = widget.controller.activeDragPayload.value;
-        if (activeDragPayload == null) {
-          _stopAutoScroll();
-        }
         final scripts = widget.controller.visibleScripts;
         final hasConfigs = widget.controller.orderedScripts.isNotEmpty;
         final searchValue = widget.controller.searchQuery.value;
@@ -99,40 +86,34 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
             selection: TextSelection.collapsed(offset: searchValue.length),
           );
         }
-        final listView = DragTarget<ConfigDragPayload>(
-          onWillAcceptWithDetails: (_) => true,
-          onMove: (details) => _handleDragMove(details.offset),
-          onLeave: (_) => _stopAutoScroll(),
-          builder: (context, _, __) => SizedBox.expand(
-            key: _listViewportKey,
-            child: ReorderableListView.builder(
-              scrollController: _listScrollController,
-              buildDefaultDragHandles: false,
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              itemCount: scripts.length,
-              // ignore: deprecated_member_use
-              onReorder: widget.controller.reorderVisibleScripts,
-              itemBuilder: (context, index) {
-                final script = scripts[index];
-                return Column(
-                  key: ValueKey<String>('config-item-${script.name}'),
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildDropTargetTile(context, script, index),
-                    if (index < scripts.length - 1)
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        indent: 14,
-                        endIndent: 8,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.outlineVariant.withValues(alpha: 0.6),
-                      ),
-                  ],
-                );
-              },
-            ),
+        final listView = SizedBox.expand(
+          child: ReorderableListView.builder(
+            scrollController: _listScrollController,
+            buildDefaultDragHandles: false,
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            itemCount: scripts.length,
+            // ignore: deprecated_member_use
+            onReorder: widget.controller.reorderVisibleScripts,
+            itemBuilder: (context, index) {
+              final script = scripts[index];
+              return Column(
+                key: ValueKey<String>('config-item-${script.name}'),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTile(context, script, index),
+                  if (index < scripts.length - 1)
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      indent: 14,
+                      endIndent: 8,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outlineVariant.withValues(alpha: 0.6),
+                    ),
+                ],
+              );
+            },
           ),
         );
         return Column(
@@ -156,137 +137,38 @@ class _ConfigCollectionPanelState extends State<ConfigCollectionPanel> {
     );
   }
 
-  /// Wraps one config tile in the drop target used by drag-copy flows.
-  Widget _buildDropTargetTile(
-    BuildContext context,
-    ScriptModel script,
-    int index,
-  ) {
-    return DragTarget<ConfigDragPayload>(
-      onWillAcceptWithDetails: (details) {
-        return _canAcceptPayload(script.name, details.data);
-      },
-      onMove: (details) => _handleDragMove(details.offset),
-      onLeave: (_) => _stopAutoScroll(),
-      onAcceptWithDetails: (details) async {
-        _stopAutoScroll();
-        widget.controller.clearConfigDrag();
-        await widget.controller.acceptConfigDrag(
-          payload: details.data,
-          destinationConfig: script.name,
-        );
-      },
-      builder: (context, candidateData, rejectedData) {
-        final candidate = candidateData.isNotEmpty ? candidateData.first : null;
-        final isHighlighted = _canAcceptPayload(script.name, candidate);
-        final scheme = Theme.of(context).colorScheme;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          margin: const EdgeInsets.symmetric(vertical: 2),
-          decoration: BoxDecoration(
-            color: isHighlighted
-                ? scheme.primary.withValues(alpha: 0.08)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isHighlighted
-                  ? scheme.primary.withValues(alpha: 0.7)
-                  : Colors.transparent,
-            ),
-          ),
-          child: ConfigCollectionTile(
-            controller: widget.controller,
-            script: script,
-            dragHandle: Tooltip(
-              message: I18n.homeScriptReorder.tr,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.grab,
-                child: ReorderableDragStartListener(
-                  index: index,
-                  child: Icon(
-                    Icons.drag_indicator_rounded,
-                    size: 18,
-                    color: scheme.outline,
-                  ),
-                ),
+  /// Builds one reorderable config row.
+  Widget _buildTile(BuildContext context, ScriptModel script, int index) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: ConfigCollectionTile(
+        controller: widget.controller,
+        script: script,
+        dragHandle: Tooltip(
+          message: I18n.homeScriptReorder.tr,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.grab,
+            child: ReorderableDragStartListener(
+              index: index,
+              child: Icon(
+                Icons.drag_indicator_rounded,
+                size: 18,
+                color: scheme.outline,
               ),
             ),
-            onTap: () => widget.onActivateScript(script.name),
-            onTogglePower: () => widget.onTogglePower(
-              script.name,
-              script.state.value != ScriptState.running,
-            ),
-            onRename: () => widget.onRenameScript(script.name),
-            onExport: () => widget.onExportScript(script.name),
-            onDelete: () => widget.onDeleteScript(script.name),
           ),
-        );
-      },
+        ),
+        onTap: () => widget.onActivateScript(script.name),
+        onTogglePower: () => widget.onTogglePower(
+          script.name,
+          script.state.value != ScriptState.running,
+        ),
+        onRename: () => widget.onRenameScript(script.name),
+        onExport: () => widget.onExportScript(script.name),
+        onDelete: () => widget.onDeleteScript(script.name),
+      ),
     );
-  }
-
-  /// Returns whether the dragged payload may be dropped on the config row.
-  bool _canAcceptPayload(String destinationConfig, ConfigDragPayload? payload) {
-    return payload != null &&
-        payload.canDropOn(destinationConfig) &&
-        !widget.controller.isDragCopyPendingFor(destinationConfig);
-  }
-
-  /// Starts or stops list auto-scroll based on the current drag location.
-  void _handleDragMove(Offset globalOffset) {
-    final renderObject = _listViewportKey.currentContext?.findRenderObject();
-    if (renderObject is! RenderBox) {
-      _stopAutoScroll();
-      return;
-    }
-    final localOffset = renderObject.globalToLocal(globalOffset);
-    final viewportHeight = renderObject.size.height;
-    if (localOffset.dy <= _autoScrollEdgeExtent) {
-      _startAutoScroll(-1);
-      return;
-    }
-    if (localOffset.dy >= viewportHeight - _autoScrollEdgeExtent) {
-      _startAutoScroll(1);
-      return;
-    }
-    _stopAutoScroll();
-  }
-
-  /// Creates one periodic scroll loop in the given direction.
-  void _startAutoScroll(double direction) {
-    if (_autoScrollTimer != null && _autoScrollDirection == direction) {
-      return;
-    }
-    _stopAutoScroll();
-    _autoScrollDirection = direction;
-    _autoScrollTimer = Timer.periodic(
-      const Duration(milliseconds: 24),
-      (_) => _tickAutoScroll(),
-    );
-  }
-
-  /// Advances the list while drag hover stays inside one edge zone.
-  void _tickAutoScroll() {
-    if (!_listScrollController.hasClients) {
-      _stopAutoScroll();
-      return;
-    }
-    final position = _listScrollController.position;
-    final currentOffset = position.pixels;
-    final nextOffset = (currentOffset + _autoScrollDirection * _autoScrollStep)
-        .clamp(position.minScrollExtent, position.maxScrollExtent);
-    if ((nextOffset - currentOffset).abs() < 0.5) {
-      _stopAutoScroll();
-      return;
-    }
-    _listScrollController.jumpTo(nextOffset);
-  }
-
-  /// Cancels any running auto-scroll loop.
-  void _stopAutoScroll() {
-    _autoScrollTimer?.cancel();
-    _autoScrollTimer = null;
-    _autoScrollDirection = 0;
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -765,10 +647,10 @@ class _FilterButton extends StatelessWidget {
         onSelected: onSelected,
         itemBuilder: (context) => ConfigCollectionPanel._visibleStateFilters
             .map(
-              (value) => CheckedPopupMenuItem<HomeScriptStateFilter>(
+              (value) => oasxCheckedPopupItem<HomeScriptStateFilter>(
                 value: value,
                 checked: value == filter,
-                child: Text(value.filterLabel),
+                label: value.filterLabel,
               ),
             )
             .toList(),

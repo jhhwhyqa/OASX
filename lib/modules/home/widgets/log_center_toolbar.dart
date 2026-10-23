@@ -334,10 +334,10 @@ class LogCenterToolbar extends StatelessWidget {
         onSelected: onLevelFilterChanged,
         itemBuilder: (context) => ScriptLogLevelFilter.values
             .map(
-              (value) => CheckedPopupMenuItem<ScriptLogLevelFilter>(
+              (value) => oasxCheckedPopupItem<ScriptLogLevelFilter>(
                 value: value,
                 checked: value == levelFilter,
-                child: Text(_levelLabel(value)),
+                label: _levelLabel(value),
               ),
             )
             .toList(),
@@ -482,25 +482,23 @@ class _LogTabSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = OasxColors.of(context);
+    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
+    final tabWidth = _tabWidth * scale;
+    final tabHeight = _tabHeight * scale;
     final isInfo = controller.activeTab.value == ScriptLogBrowserTab.info;
-    final trackColor = isDark
-        ? scheme.surfaceContainerLowest.withValues(alpha: 0.85)
-        : scheme.surfaceContainerHighest.withValues(alpha: 0.5);
-    final pillColor = isDark ? scheme.surfaceContainerHigh : scheme.surface;
+    final trackColor = colors.surfaceSunken;
+    final pillColor = colors.accentSoft;
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         color: trackColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: isDark ? 0.5 : 0.7),
-        ),
+        border: Border.all(color: colors.border),
       ),
       child: SizedBox(
-        width: _tabWidth * 2,
-        height: _tabHeight,
+        width: tabWidth * 2,
+        height: tabHeight,
         child: Stack(
           children: [
             AnimatedAlign(
@@ -508,25 +506,14 @@ class _LogTabSwitch extends StatelessWidget {
               curve: Curves.easeOutCubic,
               alignment: isInfo ? Alignment.centerLeft : Alignment.centerRight,
               child: Container(
-                width: _tabWidth,
-                height: _tabHeight,
+                width: tabWidth,
+                height: tabHeight,
                 decoration: BoxDecoration(
                   color: pillColor,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(OasxRadius.sm),
                   border: Border.all(
-                    color: scheme.outlineVariant.withValues(
-                      alpha: isDark ? 0.45 : 0.6,
-                    ),
+                    color: colors.accent.withValues(alpha: 0.35),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: scheme.shadow.withValues(
-                        alpha: isDark ? 0.18 : 0.1,
-                      ),
-                      blurRadius: 3,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
                 ),
               ),
             ),
@@ -537,12 +524,16 @@ class _LogTabSwitch extends StatelessWidget {
                   ScriptLogBrowserTab.info,
                   I18n.homeLogInfoTab.tr,
                   selected: isInfo,
+                  width: tabWidth,
+                  height: tabHeight,
                 ),
                 _buildTab(
                   context,
                   ScriptLogBrowserTab.error,
                   I18n.homeLogErrorTab.tr,
                   selected: !isInfo,
+                  width: tabWidth,
+                  height: tabHeight,
                 ),
               ],
             ),
@@ -557,11 +548,14 @@ class _LogTabSwitch extends StatelessWidget {
     ScriptLogBrowserTab tab,
     String label, {
     required bool selected,
+    required double width,
+    required double height,
   }) {
     final scheme = Theme.of(context).colorScheme;
+    final colors = OasxColors.of(context);
     final textStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-      color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+      color: selected ? colors.accent : colors.textSecondary,
     );
     return Semantics(
       button: true,
@@ -569,8 +563,8 @@ class _LogTabSwitch extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       child: SizedBox(
-        width: _tabWidth,
-        height: _tabHeight,
+        width: width,
+        height: height,
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(

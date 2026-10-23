@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oasx/api/api_client.dart';
 import 'package:oasx/config/theme.dart';
+import 'package:oasx/modules/common/widgets/oasx_panel.dart';
 import 'package:oasx/modules/home/widgets/home_pane_card.dart';
 import 'package:oasx/modules/home/widgets/log_line_presentation.dart';
 import 'package:oasx/modules/log/log_browser_models.dart';
@@ -199,8 +200,9 @@ class _LogCenterPanelState extends State<LogCenterPanel> {
         child: Center(child: Text(I18n.homeNoLog.tr)),
       );
     }
+    final colors = OasxColors.of(context);
     return HomePaneCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(OasxSpace.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -221,23 +223,38 @@ class _LogCenterPanelState extends State<LogCenterPanel> {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: Obx(
-              () => controller.activeTab.value == ScriptLogBrowserTab.info
-                  ? LogCenterInfoView(
-                      controller: controller,
-                      scrollController: _scrollController!,
-                      horizontalScrollController: _horizontalScrollController!,
-                      onScrollNotification: _handleScrollNotification,
-                      query: _logQuery,
-                      levelFilter: _levelFilter,
-                    )
-                  : LogCenterErrorView(
-                      controller: controller,
-                      listScrollController: _errorListScrollController!,
-                      detailScrollController: _errorDetailScrollController!,
-                      detailHorizontalScrollController:
-                          _errorDetailHorizontalScrollController!,
-                    ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: colors.logBackground,
+                borderRadius: BorderRadius.circular(OasxRadius.sm),
+                border: Border.all(color: colors.border),
+              ),
+              clipBehavior: Clip.antiAlias,
+              padding: const EdgeInsets.fromLTRB(
+                OasxSpace.sm,
+                OasxSpace.xs,
+                OasxSpace.xs,
+                OasxSpace.xs,
+              ),
+              child: Obx(
+                () => controller.activeTab.value == ScriptLogBrowserTab.info
+                    ? LogCenterInfoView(
+                        controller: controller,
+                        scrollController: _scrollController!,
+                        horizontalScrollController:
+                            _horizontalScrollController!,
+                        onScrollNotification: _handleScrollNotification,
+                        query: _logQuery,
+                        levelFilter: _levelFilter,
+                      )
+                    : LogCenterErrorView(
+                        controller: controller,
+                        listScrollController: _errorListScrollController!,
+                        detailScrollController: _errorDetailScrollController!,
+                        detailHorizontalScrollController:
+                            _errorDetailHorizontalScrollController!,
+                      ),
+              ),
             ),
           ),
         ],

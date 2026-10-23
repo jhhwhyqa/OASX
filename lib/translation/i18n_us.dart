@@ -148,6 +148,7 @@ final Map<String, String> _us_ui = {
   I18n.homeNoScriptSelected: 'Select a config first',
   I18n.homeRestoreSidebar: 'Restore right sidebar',
   I18n.homeStatusTab: 'Status',
+  I18n.log: 'Log',
   I18n.homeTasksTab: 'Tasks',
   I18n.homeStatsTab: 'Stats',
   I18n.homeParamsTab: 'Params',

@@ -14,106 +14,104 @@ class LogContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = OasxColors.of(context);
+    final patterns = _buildPatterns(context);
     return Card(
       margin: const EdgeInsets.fromLTRB(0, 0, 0, 10),
-      child: NotificationListener<UserScrollNotification>(
-        onNotification: (notification) {
-          onUserScroll();
-          return false;
-        },
-        child: Obx(
-          () => ListView.builder(
-            controller: scrollController,
-            itemCount: controller.logs.length,
-            itemBuilder: (context, index) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 1),
-              child: EasyRichText(
-                controller.logs[index],
-                patternList: _buildPatterns(),
-                selectable: true,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                defaultStyle: _selectStyle(context),
+      clipBehavior: Clip.antiAlias,
+      child: ColoredBox(
+        color: colors.logBackground,
+        child: NotificationListener<UserScrollNotification>(
+          onNotification: (notification) {
+            onUserScroll();
+            return false;
+          },
+          child: Obx(
+            () => ListView.builder(
+              controller: scrollController,
+              itemCount: controller.logs.length,
+              itemBuilder: (context, index) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                child: EasyRichText(
+                  controller.logs[index],
+                  patternList: patterns,
+                  selectable: true,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  defaultStyle: _selectStyle(context),
+                ),
               ),
-            ),
-          ).paddingAll(10),
+            ).paddingAll(10),
+          ),
         ),
       ),
     ).constrained(width: double.infinity, height: double.infinity);
   }
 
-  List<EasyRichTextPattern> _buildPatterns() {
+  List<EasyRichTextPattern> _buildPatterns(BuildContext context) {
+    final colors = OasxColors.of(context);
+    const figures = TextStyle(
+      fontFeatures: [FontFeature.tabularFigures()],
+    );
     return [
-      const EasyRichTextPattern(
+      EasyRichTextPattern(
         targetString: 'INFO',
-        style: TextStyle(
-          color: Color.fromARGB(255, 55, 109, 136),
-          fontFeatures: [FontFeature.tabularFigures()],
-        ),
-        suffixInlineSpan: TextSpan(
-          style: TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
+        style: figures.copyWith(color: colors.logInfo),
+        suffixInlineSpan: const TextSpan(
+          style: figures,
           text: '      ',
         ),
       ),
-      const EasyRichTextPattern(
+      EasyRichTextPattern(
         targetString: 'WARNING',
-        style: TextStyle(
-          color: Colors.yellow,
-          fontFeatures: [FontFeature.tabularFigures()],
-        ),
+        style: figures.copyWith(color: colors.logWarning),
       ),
-      const EasyRichTextPattern(
+      EasyRichTextPattern(
         targetString: 'ERROR',
-        style: TextStyle(
-          color: Colors.red,
-          fontFeatures: [FontFeature.tabularFigures()],
-        ),
-        suffixInlineSpan: TextSpan(
-          style: TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
-          text: '    ',
-        ),
+        style: figures.copyWith(color: colors.logError),
+        suffixInlineSpan: const TextSpan(style: figures, text: '    '),
       ),
-      const EasyRichTextPattern(
+      EasyRichTextPattern(
         targetString: 'CRITICAL',
-        style: TextStyle(
-          color: Colors.red,
-          fontFeatures: [FontFeature.tabularFigures()],
-        ),
-        suffixInlineSpan: TextSpan(text: '   '),
+        style: figures.copyWith(color: colors.logError),
+        suffixInlineSpan: const TextSpan(text: '   '),
       ),
-      const EasyRichTextPattern(
+      EasyRichTextPattern(
         targetString: r'(\d{2}:\d{2}:\d{2}\.\d{3})',
-        style: TextStyle(
-          color: Colors.cyan,
-          fontFeatures: [FontFeature.tabularFigures()],
-        ),
+        style: figures.copyWith(color: colors.logTimestamp),
       ),
       const EasyRichTextPattern(
         targetString: r'[\{\[\(\)\]\}]',
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
-      const EasyRichTextPattern(
+      EasyRichTextPattern(
         targetString: 'True',
-        style: TextStyle(color: Colors.lightGreen),
+        style: figures.copyWith(color: colors.accent),
       ),
-      const EasyRichTextPattern(
+      EasyRichTextPattern(
         targetString: 'False',
-        style: TextStyle(color: Colors.red),
+        style: figures.copyWith(color: colors.danger),
       ),
-      const EasyRichTextPattern(
+      EasyRichTextPattern(
         targetString: 'None',
-        style: TextStyle(color: Colors.purple),
+        style: figures.copyWith(color: colors.textTertiary),
       ),
-      const EasyRichTextPattern(
+      EasyRichTextPattern(
         targetString: r'(某喵*某喵)|(~~*~~)',
-        style: TextStyle(color: Colors.lightGreen),
+        style: figures.copyWith(color: colors.accent),
       ),
     ];
   }
 
   TextStyle _selectStyle(BuildContext context) {
-    return context.mediaQuery.orientation == Orientation.portrait
-        ? Theme.of(context).textTheme.bodySmall!
-        : Theme.of(context).textTheme.titleSmall!;
+    final size = context.mediaQuery.orientation == Orientation.portrait
+        ? 12.0
+        : 12.5;
+    return OasxText.mono(
+      context,
+      size: size,
+      color: OasxColors.of(context).logText,
+      height: 1.5,
+    );
   }
 }

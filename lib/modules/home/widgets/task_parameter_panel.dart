@@ -46,8 +46,6 @@ class _TaskParameterPanelState extends State<TaskParameterPanel> {
   Widget build(BuildContext context) {
     return Obx(() {
       _ensureLoad();
-      final dragPayload = widget.controller.activeDragPayload.value;
-      final canDragGroups = widget.controller.canUseDesktopDragCopy;
       if (_taskName.isEmpty) {
         return const SizedBox.shrink();
       }
@@ -100,19 +98,8 @@ class _TaskParameterPanelState extends State<TaskParameterPanel> {
                   key: ValueKey<String>('args-$_loadKey'),
                   scriptName: _scriptName,
                   taskName: _taskName,
-                  groupDraggable: canDragGroups,
                   groupPager: true,
                   stagingMode: true,
-                  activeDragPayload: dragPayload,
-                  groupDragPayloadBuilder: canDragGroups
-                      ? (groupName) => widget.controller.buildGroupDragPayload(
-                          sourceConfig: _scriptName,
-                          taskName: _taskName,
-                          groupName: groupName,
-                        )
-                      : null,
-                  onGroupDragStarted: widget.controller.startConfigDrag,
-                  onGroupDragEnded: widget.controller.clearConfigDrag,
                   onCancel: () async {
                     await widget.controller.closeTaskParameters();
                   },

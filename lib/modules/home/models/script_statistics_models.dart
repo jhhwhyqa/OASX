@@ -486,11 +486,11 @@ bool isStatisticsDateToday(String dateKey) {
 /// Returns a stable color for a task name.
 Color statisticsTaskColor(String taskName) {
   const palette = <Color>[
+    Color(0xFF0E9F6E),
     Color(0xFF2563EB),
-    Color(0xFFDC2626),
-    Color(0xFF16A34A),
-    Color(0xFFD97706),
+    Color(0xFFB45309),
     Color(0xFF7C3AED),
+    Color(0xFFDB2777),
     Color(0xFF0891B2),
   ];
   return palette[taskName.hashCode.abs() % palette.length];

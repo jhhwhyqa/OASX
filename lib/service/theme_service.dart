@@ -7,7 +7,7 @@ import 'package:oasx/service/system_tray_service.dart';
 
 class ThemeService extends GetxService {
   final _storage = GetStorage();
-  final _dark = false.obs;
+  final _dark = true.obs;
   final _color = ColorSeed.baseColor.color.obs;
 
   bool get isDarkMode => _dark.value;
@@ -17,7 +17,9 @@ class ThemeService extends GetxService {
 
   @override
   void onInit() {
-    _dark.value = _storage.read(StorageKey.dark.name) ?? false;
+    // The console art direction is night-first: fall back to dark when the
+    // user has never chosen a theme.
+    _dark.value = _storage.read(StorageKey.dark.name) ?? true;
     switchTheme(_dark.value);
     super.onInit();
   }

@@ -16,6 +16,7 @@ class OasSettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SettingCard(
       title: 'OAS${I18n.setting.tr}',
+      icon: Icons.hub_outlined,
       items: [
         SettingItem(
           left: Text(I18n.notifyTest.tr),

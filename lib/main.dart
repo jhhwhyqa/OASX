@@ -54,6 +54,7 @@ class OASXApp extends StatelessWidget {
           getPages: Routes.routes,
           theme: lightTheme,
           darkTheme: darkTheme,
+          themeMode: Get.find<ThemeService>().themeMode,
         );
       },
     );

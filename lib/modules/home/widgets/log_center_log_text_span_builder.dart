@@ -3,13 +3,16 @@ part of 'log_center_panel.dart';
 /// Builds highlighted spans for one log line without selectable text overhead.
 class _LogTextSpanBuilder {
   /// Creates one span builder.
-  const _LogTextSpanBuilder(this.source, this.baseStyle);
+  const _LogTextSpanBuilder(this.source, this.baseStyle, this.colors);
 
   /// Raw log text.
   final String source;
 
   /// Base style inherited by all generated spans.
   final TextStyle baseStyle;
+
+  /// Palette used for timestamps and level tokens.
+  final OasxColors colors;
 
   /// Builds a compact set of spans for common log tokens.
   List<InlineSpan> build() {
@@ -42,15 +45,32 @@ class _LogTextSpanBuilder {
     if (timestampLength > 0) {
       return TextSpan(
         text: value.substring(index, index + timestampLength),
-        style: baseStyle.copyWith(color: Colors.cyan),
+        style: baseStyle.copyWith(color: colors.logTimestamp),
       );
     }
     for (final token in _tokens) {
-      if (_matchesToken(value, index, token.text)) {
-        return TextSpan(text: token.text, style: token.style(baseStyle));
+      if (_matchesToken(value, index, token)) {
+        return TextSpan(
+          text: token,
+          style: baseStyle.copyWith(
+            color: _colorForToken(token),
+            fontWeight: FontWeight.w600,
+          ),
+        );
       }
     }
     return null;
+  }
+
+  /// Resolves the semantic color for one highlighted token.
+  Color _colorForToken(String token) {
+    return switch (token) {
+      'CRITICAL' || 'ERROR' || 'False' => colors.logError,
+      'WARNING' => colors.logWarning,
+      'INFO' => colors.logInfo,
+      'True' => colors.accent,
+      _ => colors.textTertiary,
+    };
   }
 
   /// Returns the matched timestamp length at the current index.
@@ -144,50 +164,14 @@ class _LogTextSpanBuilder {
     return end == value.length ? value : value.substring(0, end);
   }
 
-  /// Static token list used for bounded highlighting.
-  static const _tokens = <_LogToken>[
-    _LogToken('CRITICAL', _styleError),
-    _LogToken('WARNING', _styleWarning),
-    _LogToken('ERROR', _styleError),
-    _LogToken('INFO', _styleInfo),
-    _LogToken('True', _styleSuccess),
-    _LogToken('False', _styleError),
-    _LogToken('None', _styleNone),
+  /// Token list used for bounded highlighting.
+  static const _tokens = <String>[
+    'CRITICAL',
+    'WARNING',
+    'ERROR',
+    'INFO',
+    'True',
+    'False',
+    'None',
   ];
-
-  /// Styles the INFO token.
-  static TextStyle _styleInfo(TextStyle base) {
-    return base.copyWith(color: const Color.fromARGB(255, 55, 109, 136));
-  }
-
-  /// Styles the WARNING token.
-  static TextStyle _styleWarning(TextStyle base) {
-    return base.copyWith(color: Colors.yellow);
-  }
-
-  /// Styles error-level tokens.
-  static TextStyle _styleError(TextStyle base) {
-    return base.copyWith(color: Colors.red);
-  }
-
-  /// Styles successful boolean-like tokens.
-  static TextStyle _styleSuccess(TextStyle base) {
-    return base.copyWith(color: Colors.lightGreen);
-  }
-
-  /// Styles null-like tokens.
-  static TextStyle _styleNone(TextStyle base) {
-    return base.copyWith(color: Colors.purple);
-  }
-}
-
-/// Lightweight token descriptor for log rendering.
-class _LogToken {
-  const _LogToken(this.text, this.style);
-
-  /// Token text to match.
-  final String text;
-
-  /// Style factory applied when the token matches.
-  final TextStyle Function(TextStyle base) style;
 }

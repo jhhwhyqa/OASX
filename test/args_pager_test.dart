@@ -101,7 +101,6 @@ Widget _buildArgs({bool groupPager = true}) {
           scriptName: 'script',
           taskName: 'task',
           groupPager: groupPager,
-          groupDraggable: false,
         ),
       ),
     ),

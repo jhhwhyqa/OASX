@@ -14,6 +14,7 @@ class UserSettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SettingCard(
       title: I18n.userSetting.tr,
+      icon: Icons.person_outline_rounded,
       items: [
         SettingItem(
           left: Text(I18n.loginAddress.tr),

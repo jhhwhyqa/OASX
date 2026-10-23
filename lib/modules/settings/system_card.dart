@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:styled_widget/styled_widget.dart';
 
 import 'package:oasx/config/global.dart';
 import 'package:oasx/modules/settings/controllers/settings_controller.dart';
@@ -23,6 +22,7 @@ class SystemSettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SettingCard(
       title: I18n.systemSetting.tr,
+      icon: Icons.tune_rounded,
       items: [
         SettingItem(
           left: Text(I18n.changeTheme.tr),
@@ -116,12 +116,12 @@ class LanguageToggle extends StatelessWidget {
         onPressed: (index) {
           localeService.switchLanguage(index == 0 ? 'zh-CN' : 'en-US');
         },
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         children: [
           Text(I18n.zhCn.tr).paddingSymmetric(horizontal: 10),
           Text(I18n.enUs.tr).paddingSymmetric(horizontal: 10),
         ],
-      ).constrained(maxHeight: 40);
+      );
     });
   }
 }

@@ -17,8 +17,6 @@ enum StorageKey {
   temporaryDirectory,
   autoScriptList,
   homeControlScriptList,
-  homeWorkbenchCollectionWidth,
-  homeWorkbenchSplitRatio,
   homeConsoleLeftRatio,
   homeConsoleRightRatio,
   autoDeploy,

@@ -34,7 +34,7 @@ class LogCenterLogText extends StatelessWidget {
         text: TextSpan(
           style: style,
           children: richText
-              ? _LogTextSpanBuilder(line, style).build()
+              ? _LogTextSpanBuilder(line, style, OasxColors.of(context)).build()
               : [TextSpan(text: line)],
         ),
         selectionRegistrar: SelectionContainer.maybeOf(context),
@@ -50,9 +50,12 @@ class LogCenterLogText extends StatelessWidget {
 
   /// Selects the monospace-friendly log text style.
   TextStyle _selectStyle(BuildContext context) {
-    return Theme.of(context).textTheme.bodyMedium!.copyWith(
-      fontFeatures: const [FontFeature.tabularFigures()],
-      height: 1.4,
+    final colors = OasxColors.of(context);
+    return OasxText.mono(
+      context,
+      size: 12.5,
+      color: colors.logText,
+      height: 1.5,
     );
   }
 }

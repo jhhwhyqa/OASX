@@ -79,54 +79,74 @@ class ConsoleTaskPane extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final taskCount = _taskCount();
-    return Row(
-      children: [
-        Icon(Icons.task_alt_rounded, size: 16, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 6),
-        Text(
-          I18n.homeTasksTab.tr,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            '$taskCount',
-            style: theme.textTheme.labelSmall?.copyWith(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // At the minimum task width the two bulk actions no longer fit next to
+        // the title, count and manage button. They stay reachable from the
+        // task catalog instead of overflowing the header.
+        final showBulkActions = constraints.maxWidth >= 240;
+        return Row(
+          children: [
+            Icon(
+              Icons.task_alt_rounded,
+              size: 16,
               color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
             ),
-          ),
-        ),
-        const Spacer(),
-        IconButton(
-          tooltip: I18n.taskManageTitle.tr,
-          onPressed: onOpenTaskCatalog,
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-          padding: EdgeInsets.zero,
-          style: IconButton.styleFrom(foregroundColor: scheme.onSurfaceVariant),
-          icon: const Icon(Icons.list_alt_rounded, size: 18),
-        ),
-        BulkQuickScheduleButton(
-          icon: Icons.flash_on_rounded,
-          tooltip: I18n.homeQuickRunAll.tr,
-          loading: bulkMode == HomeBulkQuickScheduleMode.runNow,
-          onPressed: isBulkIdle && hasBulkTasks ? onBulkQuickRun : null,
-        ),
-        BulkQuickScheduleButton(
-          icon: Icons.schedule_rounded,
-          tooltip: I18n.homeQuickWaitAll.tr,
-          loading: bulkMode == HomeBulkQuickScheduleMode.waitNow,
-          onPressed: isBulkIdle && hasBulkTasks ? onBulkQuickWait : null,
-        ),
-      ],
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                I18n.homeTasksTab.tr,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$taskCount',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const Spacer(),
+            IconButton(
+              tooltip: I18n.taskManageTitle.tr,
+              onPressed: onOpenTaskCatalog,
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+              padding: EdgeInsets.zero,
+              style: IconButton.styleFrom(
+                foregroundColor: scheme.onSurfaceVariant,
+              ),
+              icon: const Icon(Icons.list_alt_rounded, size: 18),
+            ),
+            if (showBulkActions) ...[
+              BulkQuickScheduleButton(
+                icon: Icons.flash_on_rounded,
+                tooltip: I18n.homeQuickRunAll.tr,
+                loading: bulkMode == HomeBulkQuickScheduleMode.runNow,
+                onPressed: isBulkIdle && hasBulkTasks ? onBulkQuickRun : null,
+              ),
+              BulkQuickScheduleButton(
+                icon: Icons.schedule_rounded,
+                tooltip: I18n.homeQuickWaitAll.tr,
+                loading: bulkMode == HomeBulkQuickScheduleMode.waitNow,
+                onPressed: isBulkIdle && hasBulkTasks ? onBulkQuickWait : null,
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 

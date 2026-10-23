@@ -257,7 +257,7 @@ void main() {
     await tester.tap(
       find.ancestor(
         of: find.text('ERROR'),
-        matching: find.byType(CheckedPopupMenuItem<ScriptLogLevelFilter>),
+        matching: find.byType(PopupMenuItem<ScriptLogLevelFilter>),
       ),
     );
     await tester.pumpAndSettle();

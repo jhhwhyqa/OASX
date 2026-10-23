@@ -131,9 +131,11 @@ class ConsoleStatsRail extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Tooltip(
       message: I18n.homeStatsTab.tr,
+      excludeFromSemantics: true,
       child: Semantics(
         button: true,
         label: I18n.homeStatsTab.tr,
+        excludeSemantics: true,
         child: HomePaneCard(
           padding: EdgeInsets.zero,
           child: Material(
@@ -147,6 +149,15 @@ class ConsoleStatsRail extends StatelessWidget {
                     Icons.insights_rounded,
                     size: 18,
                     color: scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    I18n.homeStatsTab.tr,
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: 9.5,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                   const Spacer(),
                   Icon(

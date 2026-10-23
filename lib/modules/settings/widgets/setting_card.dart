@@ -1,39 +1,61 @@
 import 'package:flutter/material.dart';
+
+import 'package:oasx/config/design_system.dart';
+import 'package:oasx/modules/common/widgets/oasx_panel.dart';
 import 'package:oasx/modules/settings/widgets/setting_item.dart';
-import 'package:styled_widget/styled_widget.dart';
 
 class SettingCard extends StatelessWidget {
   final String title;
   final List<SettingItem> items;
+  final IconData icon;
 
   const SettingCard({
     super.key,
     required this.title,
     required this.items,
+    this.icon = Icons.tune_rounded,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: <Widget>[
-          Text(
-            title,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold),
+    final colors = OasxColors.of(context);
+    return OasxPanel(
+      fill: false,
+      padding: EdgeInsets.zero,
+      header: Row(
+        children: [
+          OasxIconTile(icon: icon, size: 30),
+          const SizedBox(width: OasxSpace.sm + 2),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
-          const SizedBox(height: 12),
-          ...items
-              .map(
-                (item) => item.padding(bottom: 5),
-              )
-              .toList(),
-        ].toColumn(crossAxisAlignment: CrossAxisAlignment.start),
+        ],
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(
+        OasxSpace.sm,
+        OasxSpace.xs,
+        OasxSpace.sm,
+        OasxSpace.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var index = 0; index < items.length; index++) ...[
+            if (index > 0)
+              Divider(
+                height: 1,
+                indent: OasxSpace.sm,
+                endIndent: OasxSpace.sm,
+                color: colors.border.withValues(alpha: 0.7),
+              ),
+            items[index],
+          ],
+        ],
       ),
     );
   }

@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oasx/modules/common/widgets/appbar.dart';
+import 'package:oasx/modules/common/widgets/oasx_backdrop.dart';
 import 'package:oasx/modules/home/index.dart';
-import 'package:oasx/modules/home/models/home_workbench_layout.dart';
+import 'package:oasx/modules/home/models/home_console_layout.dart';
 import 'package:oasx/modules/settings/index.dart';
 import 'package:oasx/translation/i18n_content.dart';
 
@@ -67,10 +68,10 @@ class _PrimaryNavigationShellState extends State<PrimaryNavigationShell> {
                       onSelected: _handleDestinationSelected,
                     ),
                     const VerticalDivider(width: 1),
-                    Expanded(child: content),
+                    Expanded(child: OasxBackdrop(child: content)),
                   ],
                 )
-              : content,
+              : OasxBackdrop(child: content),
           bottomNavigationBar: showRail
               ? null
               : NavigationBar(
@@ -84,10 +85,8 @@ class _PrimaryNavigationShellState extends State<PrimaryNavigationShell> {
   }
 
   bool _shouldShowRail(double maxWidth) {
-    const twoPaneShellWidth = kHomeWorkbenchMinCollectionWidth +
-        kHomeWorkbenchMinDetailsWidth +
-        kHomeWorkbenchDividerWidth +
-        kPrimaryNavigationRailWidth;
+    const twoPaneShellWidth =
+        kHomeConsoleTwoPaneMinWidth + kPrimaryNavigationRailWidth;
     return maxWidth >= twoPaneShellWidth;
   }
 

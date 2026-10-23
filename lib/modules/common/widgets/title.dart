@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import 'package:oasx/modules/server/index.dart';
 import 'package:oasx/translation/i18n_content.dart';
+import 'package:oasx/utils/platform_utils.dart';
 
 Widget getTitle(BuildContext context, {String? routePath}) {
   final resolvedRoutePath = _resolveRoutePath(context, routePath: routePath);
@@ -41,8 +42,7 @@ class HomeTitleBar extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset('assets/images/Icon-app.png', height: 30, width: 30),
-          const SizedBox(width: 14),
+          const _BrandMark(),
           Flexible(child: _TitleLabel(text: 'OASX / ${I18n.home.tr}')),
         ],
       ),
@@ -69,8 +69,7 @@ class SettingTitle extends StatelessWidget {
             BackButton(onPressed: _backHomeOrPop),
             const SizedBox(width: 8),
           ],
-          Image.asset('assets/images/Icon-app.png', height: 30, width: 30),
-          const SizedBox(width: 14),
+          const _BrandMark(),
           Flexible(child: _TitleLabel(text: 'OASX / ${I18n.setting.tr}')),
         ],
       ),
@@ -112,10 +111,36 @@ class ServerTitle extends StatelessWidget {
             }
             return const SizedBox.shrink();
           }),
-          Image.asset('assets/images/Icon-app.png', height: 30, width: 30),
-          const SizedBox(width: 14),
+          const _BrandMark(),
           const Flexible(child: _TitleLabel(text: 'OASX / Server')),
         ],
+      ),
+    );
+  }
+}
+
+/// App mark shown in the title bar on layouts without the global rail.
+///
+/// Desktop and web already render the mark at the top of the navigation rail,
+/// so the title bar would otherwise show the same icon twice.
+class _BrandMark extends StatelessWidget {
+  const _BrandMark();
+
+  @override
+  Widget build(BuildContext context) {
+    // Desktop/web layouts with the rail already show the mark there. Narrow
+    // web falls back to the bottom bar, so the title bar must carry it.
+    final showMark = !PlatformUtils.usesDesktopLayout ||
+        (PlatformUtils.isWeb && MediaQuery.sizeOf(context).width < 640);
+    if (!showMark) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(right: 14),
+      child: Image.asset(
+        'assets/images/Icon-app.png',
+        height: 30,
+        width: 30,
       ),
     );
   }

@@ -2,31 +2,21 @@ part of 'task_status_row.dart';
 
 class _TaskMeta extends StatelessWidget {
   const _TaskMeta({
-    required this.controller,
-    required this.sourceScriptName,
     required this.task,
     required this.onSetNextRun,
-    required this.dragEnabled,
   });
 
-  final HomeDashboardController controller;
-  final String sourceScriptName;
   final TaskStatusViewData task;
   final Future<void> Function(String taskName, String nextRun) onSetNextRun;
-  final bool dragEnabled;
 
   @override
   Widget build(BuildContext context) {
-    final payload = controller.buildTaskDragPayload(
-      sourceConfig: sourceScriptName,
-      taskName: task.name,
-    );
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final title = Text(
       task.name.tr,
       maxLines: 1,
-      overflow: TextOverflow.visible,
+      overflow: TextOverflow.ellipsis,
       softWrap: false,
       style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
     );
@@ -34,17 +24,7 @@ class _TaskMeta extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        dragEnabled
-            ? Draggable<ConfigDragPayload>(
-                data: payload,
-                feedback: DragCopyFeedback(label: payload.displayLabel),
-                onDragStarted: () => controller.startConfigDrag(payload),
-                onDragCompleted: controller.clearConfigDrag,
-                onDraggableCanceled: (_, __) => controller.clearConfigDrag(),
-                onDragEnd: (_) => controller.clearConfigDrag(),
-                child: title,
-              )
-            : title,
+        title,
         if (task.timeText.isNotEmpty) ...[
           const SizedBox(height: 2),
           DateTimePicker(
@@ -93,14 +73,61 @@ class _TaskActionBar extends StatelessWidget {
     required this.onQuickRun,
     required this.onQuickWait,
     required this.onEditTask,
+    this.compact = false,
   });
 
   final VoidCallback? onQuickRun;
   final VoidCallback? onQuickWait;
   final VoidCallback? onEditTask;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return PopupMenuButton<String>(
+        tooltip: I18n.taskManageTitle.tr,
+        icon: const Icon(Icons.more_horiz_rounded, size: 20),
+        onSelected: (value) {
+          switch (value) {
+            case 'run':
+              onQuickRun?.call();
+              break;
+            case 'wait':
+              onQuickWait?.call();
+              break;
+            case 'edit':
+              onEditTask?.call();
+              break;
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'run',
+            enabled: onQuickRun != null,
+            child: _TaskMenuItem(
+              icon: Icons.flash_on_rounded,
+              label: I18n.homeQuickRun.tr,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'wait',
+            enabled: onQuickWait != null,
+            child: _TaskMenuItem(
+              icon: Icons.schedule_rounded,
+              label: I18n.homeQuickWait.tr,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'edit',
+            enabled: onEditTask != null,
+            child: _TaskMenuItem(
+              icon: Icons.tune_rounded,
+              label: I18n.homeOpenTaskParams.tr,
+            ),
+          ),
+        ],
+      );
+    }
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -119,6 +146,25 @@ class _TaskActionBar extends StatelessWidget {
           tooltip: I18n.homeOpenTaskParams.tr,
           onPressed: onEditTask,
         ),
+      ],
+    );
+  }
+}
+
+class _TaskMenuItem extends StatelessWidget {
+  const _TaskMenuItem({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = OasxColors.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 17, color: colors.textSecondary),
+        const SizedBox(width: OasxSpace.sm),
+        Text(label),
       ],
     );
   }

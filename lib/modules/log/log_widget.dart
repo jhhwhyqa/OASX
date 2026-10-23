@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:styled_widget/styled_widget.dart';
 
+import 'package:oasx/config/design_system.dart';
+
 import 'log_mixin.dart';
 
 part 'log_widget_scroll.dart';
