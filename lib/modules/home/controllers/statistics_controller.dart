@@ -117,6 +117,7 @@ class HomeStatisticsController extends GetxController {
         dashboardController.activeWorkbenchSidebarTab,
         dashboardController.workbenchLayoutMode,
         dashboardController.isConsoleStatsVisible,
+        dashboardController.isConsoleLayoutActive,
       ],
       (_) {
         unawaited(syncStatisticsBinding());

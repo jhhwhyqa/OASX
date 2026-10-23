@@ -14,6 +14,7 @@ import 'package:oasx/modules/home/models/taskitem_model.dart';
 import 'package:oasx/modules/home/widgets/active_config_panel.dart';
 import 'package:oasx/modules/home/widgets/config_collection_panel.dart';
 import 'package:oasx/modules/home/widgets/config_workbench.dart';
+import 'package:oasx/modules/home/widgets/console_stats_pane.dart';
 import 'package:oasx/modules/home/widgets/console_task_pane.dart';
 import 'package:oasx/modules/home/widgets/console_task_status_view.dart';
 import 'package:oasx/modules/home/widgets/home_console.dart';
@@ -351,7 +352,9 @@ void main() {
           expect(find.byType(ConsoleTaskPane), findsOneWidget);
           expect(find.text('alpha'), findsWidgets);
           expect(find.byTooltip('Task Manager'), findsOneWidget);
-          expect(controller.isConsoleStatsVisible.value, isTrue);
+          expect(controller.isConsoleStatsVisible.value, isFalse);
+          expect(find.byType(ConsoleStatsRail), findsOneWidget);
+          expect(find.byType(ConsoleStatsPane), findsNothing);
           expect(
             find.byKey(const ValueKey<String>('config-summary')),
             width >= 1600 ? findsOneWidget : findsNothing,
@@ -456,10 +459,34 @@ void main() {
     expect(find.byTooltip('Live log disconnected'), findsOneWidget);
   });
 
+  testWidgets('statistics column starts collapsed and binds on expand', (
+    tester,
+  ) async {
+    await pumpConsole(tester, width: 1280, theme: lightTheme);
+    expect(controller.isConsoleStatsVisible.value, isFalse);
+    expect(find.byType(ConsoleStatsRail), findsOneWidget);
+    expect(find.byType(ConsoleStatsPane), findsNothing);
+
+    await tester.tap(find.byTooltip('Stats'));
+    await tester.pumpAndSettle();
+    expect(controller.isConsoleStatsVisible.value, isTrue);
+    expect(find.byType(ConsoleStatsRail), findsNothing);
+    expect(find.byType(ConsoleStatsPane), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Collapse stats'));
+    await tester.pumpAndSettle();
+    expect(controller.isConsoleStatsVisible.value, isFalse);
+    expect(find.byType(ConsoleStatsRail), findsOneWidget);
+    expect(find.byType(ConsoleStatsPane), findsNothing);
+  });
+
   testWidgets('desktop console maximizes and restores the log column', (
     tester,
   ) async {
     await pumpConsole(tester, width: 1280, theme: lightTheme);
+    await tester.tap(find.byTooltip('Stats'));
+    await tester.pumpAndSettle();
+    expect(controller.isConsoleStatsVisible.value, isTrue);
 
     await tester.tap(find.byIcon(Icons.fullscreen_rounded));
     await tester.pumpAndSettle();
@@ -509,7 +536,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Not started'), findsWidgets);
-    expect(controller.isConsoleStatsVisible.value, isTrue);
+    expect(controller.isConsoleStatsVisible.value, isFalse);
 
     final taskAction = find.byKey(kConsoleTaskActionKey);
     expect(taskAction, findsOneWidget);

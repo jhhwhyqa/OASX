@@ -67,6 +67,14 @@ extension HomeDashboardLayoutX on HomeDashboardController {
     _storage.write(StorageKey.homeConsoleRightRatio.name, normalized);
   }
 
+  /// Marks whether the desktop console is the active home layout.
+  void setConsoleLayoutActive(bool value) {
+    if (isConsoleLayoutActive.value == value) {
+      return;
+    }
+    isConsoleLayoutActive.value = value;
+  }
+
   /// Marks whether the desktop console currently renders the statistics pane.
   void setConsoleStatsVisible(bool value) {
     if (isConsoleStatsVisible.value == value) {

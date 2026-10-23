@@ -273,6 +273,7 @@ class I18n {
       homeConsoleLogSearch = 'home_console_log_search';
   static const String homeConsoleMaximizeLog = 'home_console_maximize_log',
       homeConsoleRestoreLayout = 'home_console_restore_layout',
+      homeConsoleCollapseStats = 'home_console_collapse_stats',
       homeConsoleLogConnected = 'home_console_log_connected';
   static const String homeConsoleLogConnecting = 'home_console_log_connecting',
       homeConsoleLogDisconnected = 'home_console_log_disconnected';

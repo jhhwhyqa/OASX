@@ -243,6 +243,7 @@ final Map<String, String> _us_ui = {
   I18n.homeConsoleLogSearch: 'Search logs',
   I18n.homeConsoleMaximizeLog: 'Maximize log',
   I18n.homeConsoleRestoreLayout: 'Restore layout',
+  I18n.homeConsoleCollapseStats: 'Collapse stats',
   I18n.homeConsoleLogConnected: 'Live log connected',
   I18n.homeConsoleLogConnecting: 'Connecting live log',
   I18n.homeConsoleLogDisconnected: 'Live log disconnected',

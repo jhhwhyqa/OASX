@@ -138,6 +138,12 @@ class HomeDashboardController extends GetxController {
   final homeConsoleLeftRatio = kHomeConsoleDefaultLeftRatio.obs;
   final homeConsoleRightRatio = kHomeConsoleDefaultRightRatio.obs;
   final isConsoleStatsVisible = false.obs;
+
+  /// Whether the desktop three-column console currently owns the page.
+  ///
+  /// While the console is mounted its own statistics visibility is
+  /// authoritative; the workbench tab fallback only applies elsewhere.
+  final isConsoleLayoutActive = false.obs;
   final activeWorkbenchTab = HomeWorkbenchTab.status.obs;
   final _lastPrimaryWorkbenchTab = HomeWorkbenchTab.status.obs;
   final activeWorkbenchSidebarTab = HomeWorkbenchTab.logs.obs;

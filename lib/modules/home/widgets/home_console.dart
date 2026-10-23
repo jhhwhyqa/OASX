@@ -1,9 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
-import 'package:oasx/modules/home/controllers/statistics_controller.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
 import 'package:oasx/modules/home/models/home_console_layout.dart';
 import 'package:oasx/modules/home/widgets/config_management_dialog.dart';
@@ -65,6 +62,10 @@ class HomeConsole extends StatefulWidget {
 
 class _HomeConsoleState extends State<HomeConsole> {
   bool _logMaximized = false;
+
+  /// Statistics stay folded until the user expands the rail, which keeps the
+  /// statistics transport closed during startup and auto deploy.
+  bool _statsExpanded = false;
   double? _dragLeftRatio;
   double? _dragRightRatio;
 
@@ -75,13 +76,8 @@ class _HomeConsoleState extends State<HomeConsole> {
       if (!mounted) {
         return;
       }
-      widget.controller.setConsoleStatsVisible(!_logMaximized);
-      // The auto deploy flow replaces this console with the loading placeholder
-      // and remounts it afterwards. Rebind the statistics here so a visibility
-      // flag that was already true does not leave the pane on an empty state.
-      if (Get.isRegistered<HomeStatisticsController>()) {
-        unawaited(Get.find<HomeStatisticsController>().syncStatisticsBinding());
-      }
+      widget.controller.setConsoleLayoutActive(true);
+      widget.controller.setConsoleStatsVisible(_statsExpanded && !_logMaximized);
     });
   }
 
@@ -91,6 +87,7 @@ class _HomeConsoleState extends State<HomeConsole> {
       if (mounted) {
         return;
       }
+      widget.controller.setConsoleLayoutActive(false);
       widget.controller.setConsoleStatsVisible(false);
     });
     super.dispose();
@@ -143,6 +140,9 @@ class _HomeConsoleState extends State<HomeConsole> {
                     onToggleMaximize: _toggleLogMaximized,
                   );
                 }
+                final rightWidth = _statsExpanded
+                    ? layout.rightWidth
+                    : kHomeConsoleCollapsedRightWidth;
                 return Row(
                   key: const ValueKey<String>('home-console-desktop'),
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -157,8 +157,7 @@ class _HomeConsoleState extends State<HomeConsole> {
                           _handleLeftDragUpdate(details, layout),
                       onDragEnd: () => _handleLeftDragEnd(),
                     ),
-                    SizedBox(
-                      width: layout.centerWidth,
+                    Expanded(
                       child: _buildCenterPane(
                         context,
                         script,
@@ -166,14 +165,17 @@ class _HomeConsoleState extends State<HomeConsole> {
                         onToggleMaximize: _toggleLogMaximized,
                       ),
                     ),
-                    _ConsoleDivider(
-                      onDragStart: () => _handleRightDragStart(layout),
-                      onDragUpdate: (details) =>
-                          _handleRightDragUpdate(details, layout),
-                      onDragEnd: () => _handleRightDragEnd(),
-                    ),
+                    if (_statsExpanded)
+                      _ConsoleDivider(
+                        onDragStart: () => _handleRightDragStart(layout),
+                        onDragUpdate: (details) =>
+                            _handleRightDragUpdate(details, layout),
+                        onDragEnd: () => _handleRightDragEnd(),
+                      )
+                    else
+                      const SizedBox(width: 8),
                     SizedBox(
-                      width: layout.rightWidth,
+                      width: rightWidth,
                       child: _buildRightPane(context, script),
                     ),
                   ],
@@ -257,14 +259,27 @@ class _HomeConsoleState extends State<HomeConsole> {
   }
 
   Widget _buildRightPane(BuildContext context, ScriptModel? script) {
-    if (script == null) {
-      return _buildPanePlaceholder(
-        context,
-        icon: Icons.insights_rounded,
-        message: I18n.homeNoScriptSelected.tr,
-      );
+    if (!_statsExpanded) {
+      return ConsoleStatsRail(onExpand: () => _setStatsExpanded(true));
     }
-    return ConsoleStatsPane(scriptName: script.name);
+    return ConsoleStatsPane(
+      scriptName: script?.name ?? '',
+      onCollapse: () => _setStatsExpanded(false),
+    );
+  }
+
+  /// Expands or folds the statistics column.
+  ///
+  /// Expanding flips the shared visibility flag, which is what triggers the
+  /// statistics binding and its live stream.
+  void _setStatsExpanded(bool value) {
+    if (_statsExpanded == value) {
+      return;
+    }
+    setState(() {
+      _statsExpanded = value;
+    });
+    widget.controller.setConsoleStatsVisible(value && !_logMaximized);
   }
 
   Widget _buildPanePlaceholder(
@@ -298,7 +313,7 @@ class _HomeConsoleState extends State<HomeConsole> {
     setState(() {
       _logMaximized = !_logMaximized;
     });
-    widget.controller.setConsoleStatsVisible(!_logMaximized);
+    widget.controller.setConsoleStatsVisible(!_logMaximized && _statsExpanded);
   }
 
   void _handleLeftDragStart(HomeConsoleLayout layout) {

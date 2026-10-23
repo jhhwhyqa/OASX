@@ -15,6 +15,9 @@ const double kHomeConsoleMaxLeftWidth = 420;
 /// Minimum width kept for the log column.
 const double kHomeConsoleMinCenterWidth = 480;
 
+/// Width of the collapsed statistics rail.
+const double kHomeConsoleCollapsedRightWidth = 48;
+
 /// Minimum width of the statistics column.
 const double kHomeConsoleMinRightWidth = 280;
 

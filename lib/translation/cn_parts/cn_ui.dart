@@ -306,6 +306,7 @@ final Map<String, String> _cn_ui = {
   I18n.homeConsoleLogSearch: '搜索日志',
   I18n.homeConsoleMaximizeLog: '最大化日志',
   I18n.homeConsoleRestoreLayout: '恢复正常布局',
+  I18n.homeConsoleCollapseStats: '折叠统计',
   I18n.homeConsoleLogConnected: '实时日志已连接',
   I18n.homeConsoleLogConnecting: '正在连接实时日志',
   I18n.homeConsoleLogDisconnected: '实时日志未连接',
