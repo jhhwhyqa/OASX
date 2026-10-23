@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oasx/modules/home/controllers/dashboard_controller.dart';
+import 'package:oasx/modules/home/controllers/statistics_controller.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
 import 'package:oasx/modules/home/models/home_console_layout.dart';
 import 'package:oasx/modules/home/widgets/config_management_dialog.dart';
@@ -69,8 +72,15 @@ class _HomeConsoleState extends State<HomeConsole> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        widget.controller.setConsoleStatsVisible(!_logMaximized);
+      if (!mounted) {
+        return;
+      }
+      widget.controller.setConsoleStatsVisible(!_logMaximized);
+      // The auto deploy flow replaces this console with the loading placeholder
+      // and remounts it afterwards. Rebind the statistics here so a visibility
+      // flag that was already true does not leave the pane on an empty state.
+      if (Get.isRegistered<HomeStatisticsController>()) {
+        unawaited(Get.find<HomeStatisticsController>().syncStatisticsBinding());
       }
     });
   }

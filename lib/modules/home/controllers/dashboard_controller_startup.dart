@@ -140,6 +140,17 @@ extension HomeDashboardStartupX on HomeDashboardController {
     startupLoadingMessage.value = I18n.homeLoadingConfigDetail;
     await _scriptService.reloadFromServer();
     _notifyBackendReady();
+    // The log/stats endpoints can become available a moment after the script
+    // list responds. Retry the bindings briefly instead of requiring a manual
+    // refresh.
+    for (final delay in const [Duration(seconds: 1), Duration(seconds: 3)]) {
+      Future<void>.delayed(delay, () {
+        if (isClosed) {
+          return;
+        }
+        _notifyBackendReady();
+      });
+    }
 
     if (!triggerAutoRun) {
       return;
