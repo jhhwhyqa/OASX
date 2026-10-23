@@ -49,8 +49,9 @@ class ConsoleTaskStatus {
 /// Resolves the console task header status.
 ///
 /// The precedence matches the retired running-task card so the header keeps
-/// the same messages: connection failure, unknown state, warning, task name,
-/// running without a name, then idle.
+/// the same messages: connection failure, unknown state, warning, running
+/// with a task name, running without a name, then idle. The script state wins
+/// over a stale task name so the power action always matches reality.
 ConsoleTaskStatus resolveConsoleTaskStatus({
   required String runningTaskName,
   required bool isRunning,
@@ -77,7 +78,10 @@ ConsoleTaskStatus resolveConsoleTaskStatus({
       taskName: '',
     );
   }
-  if (taskName.isNotEmpty) {
+  // The script state is authoritative: the backend can keep the last task
+  // name after a stop, and treating that stale name as "running" left the
+  // power action stuck on stop so the config could not be started again.
+  if (isRunning && taskName.isNotEmpty) {
     return ConsoleTaskStatus(
       kind: ConsoleTaskStatusKind.runningWithTask,
       taskName: taskName,

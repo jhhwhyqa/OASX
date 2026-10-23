@@ -139,11 +139,32 @@ extension HomeDashboardStartupX on HomeDashboardController {
     isStartupConnectionFailed.value = false;
     startupLoadingMessage.value = I18n.homeLoadingConfigDetail;
     await _scriptService.reloadFromServer();
+    _notifyBackendReady();
 
     if (!triggerAutoRun) {
       return;
     }
     unawaited(_scriptService.autoRunScript());
+  }
+
+  /// Lets bindings that failed during auto deploy retry now that login works.
+  void _notifyBackendReady() {
+    backendReadyRevision.value += 1;
+
+    final activeName = activeScriptName.value.trim();
+    if (activeName.isEmpty ||
+        !Get.isRegistered<ScriptLogBrowserController>(tag: activeName)) {
+      return;
+    }
+    final logController = Get.find<ScriptLogBrowserController>(tag: activeName);
+    // Only resume controllers whose log panel is currently mounted; the panel
+    // performs its own first load when it mounts later.
+    if (logController.viewportOwner == null) {
+      return;
+    }
+    if (logController.lines.isEmpty || logController.streamClient == null) {
+      logController.activate();
+    }
   }
 
   Future<void> _refreshTranslationsAfterLogin() async {

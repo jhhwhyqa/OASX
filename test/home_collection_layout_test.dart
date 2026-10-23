@@ -54,7 +54,7 @@ class _TestStatisticsController extends HomeStatisticsController {
   void onInit() {}
 
   @override
-  Future<void> syncStatisticsBinding() async {}
+  Future<void> syncStatisticsBinding({bool force = false}) async {}
 }
 
 String _testNextRun(int dayOffset) {
@@ -378,6 +378,26 @@ void main() {
       );
     }
   }
+
+  testWidgets('console task action follows the script state', (tester) async {
+    await pumpConsole(tester, width: 1280, theme: lightTheme);
+    final script = Get.find<ScriptService>().findScriptModel('alpha')!;
+    expect(script.state.value, ScriptState.running);
+
+    IconButton actionButton() {
+      return tester.widget<IconButton>(find.byKey(kConsoleTaskActionKey));
+    }
+
+    expect(actionButton().tooltip, 'Stopped');
+
+    script.state.value = ScriptState.inactive;
+    await tester.pump();
+    expect(actionButton().tooltip, 'Running');
+
+    script.state.value = ScriptState.running;
+    await tester.pump();
+    expect(actionButton().tooltip, 'Stopped');
+  });
 
   testWidgets('desktop console maximizes and restores the log column', (
     tester,

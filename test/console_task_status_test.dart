@@ -55,6 +55,18 @@ void main() {
     expect(status.isRunning, isTrue);
   });
 
+  test('ignores a stale task name after the script stops', () {
+    final status = resolve(
+      runningTaskName: 'daily quest',
+      isRunning: false,
+      scriptState: ScriptState.inactive,
+    );
+
+    expect(status.kind, ConsoleTaskStatusKind.notStarted);
+    expect(status.taskName, isEmpty);
+    expect(status.isRunning, isFalse);
+  });
+
   test('connection failure wins over every other signal', () {
     final status = resolve(
       runningTaskName: 'daily quest',

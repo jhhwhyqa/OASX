@@ -58,6 +58,9 @@ class HomeStatisticsController extends GetxController {
   /// Worker that keeps the controller bound to dashboard context.
   Worker? _dashboardWorker;
 
+  /// Retries statistics loading once auto deploy finishes starting the backend.
+  Worker? _backendReadyWorker;
+
   /// Active SSE service, only present when today is selected.
   ApiSseClient? _streamService;
 
@@ -90,14 +93,20 @@ class HomeStatisticsController extends GetxController {
 
   @override
   void onInit() {
-    _dashboardWorker = everAll([
-      dashboardController.activeScriptName,
-      dashboardController.activeWorkbenchTab,
-      dashboardController.activeWorkbenchSidebarTab,
-      dashboardController.workbenchLayoutMode,
-      dashboardController.isConsoleStatsVisible,
-    ], (_) {
-      unawaited(syncStatisticsBinding());
+    _dashboardWorker = everAll(
+      [
+        dashboardController.activeScriptName,
+        dashboardController.activeWorkbenchTab,
+        dashboardController.activeWorkbenchSidebarTab,
+        dashboardController.workbenchLayoutMode,
+        dashboardController.isConsoleStatsVisible,
+      ],
+      (_) {
+        unawaited(syncStatisticsBinding());
+      },
+    );
+    _backendReadyWorker = ever(dashboardController.backendReadyRevision, (_) {
+      unawaited(syncStatisticsBinding(force: true));
     });
     unawaited(syncStatisticsBinding());
     super.onInit();
@@ -107,6 +116,8 @@ class HomeStatisticsController extends GetxController {
   void onClose() {
     _dashboardWorker?.dispose();
     _dashboardWorker = null;
+    _backendReadyWorker?.dispose();
+    _backendReadyWorker = null;
     unawaited(_stopStream());
     super.onClose();
   }
@@ -143,13 +154,14 @@ class HomeStatisticsController extends GetxController {
     }).toList();
     entries.sort((left, right) {
       final compareValue = switch (sortField) {
-        ScriptStatisticsChartSortField.data => left.value
-            .metricValueFor(metric)
-            .compareTo(right.value.metricValueFor(metric)),
+        ScriptStatisticsChartSortField.data =>
+          left.value
+              .metricValueFor(metric)
+              .compareTo(right.value.metricValueFor(metric)),
         ScriptStatisticsChartSortField.time => _compareLatestRunTime(
-            left.value,
-            right.value,
-          ),
+          left.value,
+          right.value,
+        ),
       };
       if (compareValue != 0) {
         return descending ? -compareValue : compareValue;
@@ -191,14 +203,16 @@ class HomeStatisticsController extends GetxController {
   }
 
   /// Rebinds the statistics transport to the currently visible script context.
-  Future<void> syncStatisticsBinding() async {
+  Future<void> syncStatisticsBinding({bool force = false}) async {
     final scriptName = dashboardController.activeScriptName.value.trim();
     if (!dashboardController.isStatsVisibleInCurrentLayout ||
         scriptName.isEmpty) {
       await _resetBindingState(clearSelection: false);
       return;
     }
-    if (_boundScriptName == scriptName && availableDateKeys.isNotEmpty) {
+    if (!force &&
+        _boundScriptName == scriptName &&
+        availableDateKeys.isNotEmpty) {
       return;
     }
     await _bootstrapForScript(scriptName);
@@ -224,8 +238,8 @@ class HomeStatisticsController extends GetxController {
   void selectHistorySortField(ScriptStatisticsChartSortField field) {
     final resolvedField =
         field == ScriptStatisticsChartSortField.time && !canSortByTime
-            ? ScriptStatisticsChartSortField.data
-            : field;
+        ? ScriptStatisticsChartSortField.data
+        : field;
     if (historySortField.value == resolvedField) {
       return;
     }
@@ -319,8 +333,8 @@ class HomeStatisticsController extends GetxController {
       statistics.value = day;
       connectionState.value =
           isStatisticsDateToday(dateKey) && PlatformUtils.isWeb
-              ? ScriptStatisticsConnectionState.connected
-              : ScriptStatisticsConnectionState.idle;
+          ? ScriptStatisticsConnectionState.connected
+          : ScriptStatisticsConnectionState.idle;
       _syncSelections();
     } catch (error) {
       if (!_isStatsRequestActive(statsRevision, scriptName, dateKey)) {
@@ -330,8 +344,8 @@ class HomeStatisticsController extends GetxController {
       statistics.value = null;
       connectionState.value =
           isStatisticsDateToday(dateKey) && PlatformUtils.isWeb
-              ? ScriptStatisticsConnectionState.error
-              : ScriptStatisticsConnectionState.idle;
+          ? ScriptStatisticsConnectionState.error
+          : ScriptStatisticsConnectionState.idle;
       lastErrorMessage.value = error.toString();
     }
   }
@@ -511,8 +525,9 @@ class HomeStatisticsController extends GetxController {
     }
     final preferredTask = selectedTaskName.value.trim();
     final hasPreferredTask = entries.any((entry) => entry.key == preferredTask);
-    selectedTaskName.value =
-        hasPreferredTask ? preferredTask : entries.first.key;
+    selectedTaskName.value = hasPreferredTask
+        ? preferredTask
+        : entries.first.key;
   }
 
   /// Clears cached derived lists used by the chart.
@@ -554,11 +569,7 @@ class HomeStatisticsController extends GetxController {
   }
 
   /// Returns whether one selected-date request is still active.
-  bool _isStatsRequestActive(
-    int revision,
-    String scriptName,
-    String dateKey,
-  ) {
+  bool _isStatsRequestActive(int revision, String scriptName, String dateKey) {
     return revision == _statsRevision &&
         dashboardController.isStatsVisibleInCurrentLayout &&
         _boundScriptName == scriptName &&

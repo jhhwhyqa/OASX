@@ -9,6 +9,7 @@ import 'package:oasx/modules/common/models/config_drag_payload.dart';
 import 'package:oasx/modules/home/models/config_model.dart';
 import 'package:oasx/modules/home/models/home_console_layout.dart';
 import 'package:oasx/modules/home/models/home_workbench_layout.dart';
+import 'package:oasx/modules/log/script_log_browser_controller.dart';
 import 'package:oasx/modules/settings/controllers/settings_controller.dart';
 import 'package:oasx/modules/common/models/storage_key.dart';
 import 'package:oasx/service/script_service.dart';
@@ -118,6 +119,12 @@ class HomeDashboardController extends GetxController {
   final isStartupConnectionFailed = false.obs;
   final isStartupAutoDeploying = false.obs;
   final startupLoadingMessage = ''.obs;
+
+  /// Incremented whenever the backend becomes ready and scripts reload.
+  ///
+  /// Listeners use this to retry bindings that failed while an auto deploy was
+  /// still starting the backend.
+  final backendReadyRevision = 0.obs;
   final isLinkModeEnabled = false.obs;
   final linkedScriptList = <String>[].obs;
   final searchQuery = ''.obs;
